@@ -20,6 +20,25 @@ const ai = new GoogleGenAI({
   }
 });
 
+async function callGeminiWithRetry(apiCall: () => Promise<any>, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await apiCall();
+    } catch (error: any) {
+      const isTemporary = error.status === 503 || error.status === 429 || 
+                          (error.message && (error.message.includes('503') || error.message.includes('demand') || error.message.includes('429')));
+      
+      if (isTemporary && i < retries - 1) {
+        console.warn(`Gemini API temporary error (${error.status || '503'}). Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 // AI Routes
 app.post("/api/quiz/analyze", async (req, res) => {
   try {
@@ -48,7 +67,7 @@ app.post("/api/quiz/analyze", async (req, res) => {
       - possible_question_types: string[]
     `});
 
-    const result = await ai.models.generateContent({
+    const result = await callGeminiWithRetry(() => ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: { parts },
       config: {
@@ -66,7 +85,7 @@ app.post("/api/quiz/analyze", async (req, res) => {
           }
         }
       }
-    });
+    }));
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
@@ -125,7 +144,7 @@ app.post("/api/quiz/generate", async (req, res) => {
       - depth_of_knowledge: string (사고 수준)
     `});
 
-    const result = await ai.models.generateContent({
+    const result = await callGeminiWithRetry(() => ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: { parts },
       config: {
@@ -147,7 +166,7 @@ app.post("/api/quiz/generate", async (req, res) => {
           }
         }
       }
-    });
+    }));
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
@@ -182,7 +201,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
       - weaknesses: string
     `;
 
-    const result = await ai.models.generateContent({
+    const result = await callGeminiWithRetry(() => ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
       config: {
@@ -203,7 +222,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
           }
         }
       }
-    });
+    }));
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
