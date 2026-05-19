@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogIn, User, Search, Loader2, Hash, Rocket, Users } from 'lucide-react';
+import { User, Loader2, Hash, Rocket, Sparkles } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -38,78 +38,95 @@ export default function StudentJoin() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+    <div className="min-h-screen ios-wallpaper flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Interactive blurred background blobs for iOS 26 aesthetics */}
+      <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px] animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse duration-5000" />
+      
       <motion.div 
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-lg"
+        transition={{ duration: 0.8, cubicBezier: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-lg relative z-10"
       >
-        <div className="bg-white rounded-[48px] p-16 shadow-2xl border border-slate-200 relative overflow-hidden">
-           <div className="absolute top-0 inset-x-0 h-3 bg-indigo-600" />
-           <div className="absolute top-0 right-0 p-8">
-              <div className="bg-slate-50 w-16 h-16 rounded-[24px] flex items-center justify-center text-slate-300">
-                <Users size={32} strokeWidth={2.5} />
-              </div>
-           </div>
+        <div className="ios-glass rounded-[40px] p-10 lg:p-14 shadow-2xl border border-white/10 relative overflow-hidden text-white">
+          {/* Subtle top glare edge */}
+          <div className="absolute top-0 left-1/4 right-1/4 h-[1.5px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          
+          <header className="mb-12 text-center">
+            <div className="inline-flex p-3.5 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl mb-6 shadow-lg shadow-indigo-500/20 glow-purple">
+              <Sparkles size={28} className="text-white" />
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2 leading-tight">
+              AI 맞춤형 평가
+            </h1>
+            <p className="text-white/55 font-medium text-sm leading-relaxed max-w-sm mx-auto">
+              초대 코드와 이름을 입력하여 인공지능이 설계한 맞춤 수학 진단에 참여하세요.
+            </p>
+          </header>
 
-           <header className="mb-12">
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">AI 맞춤형 평가</h1>
-              <p className="text-slate-400 font-medium text-lg leading-relaxed">준비되셨나요? 초대 코드와 이름을 입력하고 시작하세요.</p>
-           </header>
-
-           <form onSubmit={handleJoin} className="space-y-8">
-              <div className="space-y-4">
-                 <div className="relative group">
-                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors">
-                       <Hash size={24} strokeWidth={3} />
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="초대 코드 (6자리)" 
-                      value={inviteCode}
-                      onChange={e => setInviteCode(e.target.value.toUpperCase())}
-                      className="w-full pl-16 pr-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-3xl text-2xl font-black tracking-widest placeholder:text-slate-300 placeholder:font-bold focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-50 outline-none transition-all uppercase"
-                      maxLength={6}
-                      required
-                    />
-                 </div>
-
-                 <div className="relative group">
-                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors">
-                       <User size={24} strokeWidth={3} />
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="이름 입력" 
-                      value={studentName}
-                      onChange={e => setStudentName(e.target.value)}
-                      className="w-full pl-16 pr-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-3xl text-2xl font-black placeholder:text-slate-300 placeholder:font-bold focus:border-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-50 outline-none transition-all"
-                      required
-                    />
-                 </div>
+          <form onSubmit={handleJoin} className="space-y-8">
+            <div className="space-y-4.5">
+              {/* Invite Code Input */}
+              <div className="relative group">
+                <div className="absolute left-5.5 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-indigo-400 transition-colors">
+                  <Hash size={20} strokeWidth={2.5} />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="초대 코드 (6자리)" 
+                  value={inviteCode}
+                  onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                  className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-xl font-extrabold tracking-widest placeholder:text-white/20 placeholder:font-bold focus:border-indigo-500/50 focus:bg-white/10 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all uppercase text-white text-center"
+                  maxLength={6}
+                  required
+                />
               </div>
 
-              {error && <p className="text-rose-500 text-xs font-black uppercase tracking-widest text-center">{error}</p>}
+              {/* Student Name Input */}
+              <div className="relative group">
+                <div className="absolute left-5.5 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-indigo-400 transition-colors">
+                  <User size={20} strokeWidth={2.5} />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="본인의 이름 입력" 
+                  value={studentName}
+                  onChange={e => setStudentName(e.target.value)}
+                  className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-lg font-bold placeholder:text-white/25 placeholder:font-bold focus:border-indigo-500/50 focus:bg-white/10 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-white"
+                  required
+                />
+              </div>
+            </div>
 
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isLoading}
-                className="w-full py-6 bg-slate-900 text-white rounded-3xl text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/20 hover:bg-slate-800 transition-all uppercase tracking-widest disabled:opacity-50"
-              >
-                 {isLoading ? <Loader2 className="animate-spin" size={24} strokeWidth={3} /> : <Rocket size={24} strokeWidth={3} />}
-                 입장하기
-              </motion.button>
-           </form>
+            {error && (
+              <p className="text-rose-400 text-xs font-bold tracking-tight text-center bg-rose-500/10 border border-rose-500/15 py-3.5 rounded-xl animate-shake">
+                {error}
+              </p>
+            )}
 
-           <div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-              <span>Powered by Gemini AI</span>
-              <span>Secure Evaluation</span>
-           </div>
+            <motion.button 
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              disabled={isLoading}
+              className="w-full py-5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-2xl text-base font-extrabold flex items-center justify-center gap-2.5 shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all uppercase tracking-wider disabled:opacity-50 glow-purple"
+            >
+              {isLoading ? <Loader2 className="animate-spin" size={20} strokeWidth={2.5} /> : <Rocket size={20} strokeWidth={2.5} />}
+              학습 시작하기
+            </motion.button>
+          </form>
+
+          <div className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-extrabold text-white/30 uppercase tracking-widest">
+            <span>Powered by Gemini 2.0</span>
+            <span>Secure Verification</span>
+          </div>
         </div>
 
-        <p className="mt-8 text-center text-slate-400 font-bold text-sm">
-           교사이신가요? <button onClick={() => navigate('/')} className="text-indigo-600 hover:underline">선생님 대시보드로 이동</button>
+        <p className="mt-8 text-center text-white/40 font-bold text-xs">
+          교사이신가요?{' '}
+          <button onClick={() => navigate('/')} className="text-indigo-400 hover:text-indigo-300 font-extrabold transition-colors underline underline-offset-4">
+            선생님 대시보드로 이동
+          </button>
         </p>
       </motion.div>
     </div>

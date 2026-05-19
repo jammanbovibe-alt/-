@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Send, Clock, Loader2, BrainCircuit, CheckCircle2, Target } from 'lucide-react';
+import { ChevronRight, Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Quiz } from '../types';
@@ -85,126 +85,178 @@ export default function StudentQuiz() {
   };
 
   if (loading) return (
-    <div className="h-screen bg-slate-50 flex items-center justify-center">
+    <div className="h-screen ios-wallpaper flex items-center justify-center font-sans text-white">
        <div className="flex flex-col items-center gap-6">
-          <Loader2 className="animate-spin text-indigo-600" size={64} strokeWidth={3} />
-          <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Preparing evaluation environment...</p>
+          <Loader2 className="animate-spin text-indigo-400" size={64} strokeWidth={2.5} />
+          <p className="text-white/40 font-extrabold uppercase tracking-widest text-[10px]">Preparing evaluation environment...</p>
        </div>
     </div>
   );
 
-  if (!quiz) return <div className="h-screen bg-slate-50 flex items-center justify-center font-black text-slate-400">퀴즈를 찾을 수 없습니다.</div>;
+  if (!quiz) return (
+    <div className="h-screen ios-wallpaper flex items-center justify-center font-black text-white/50">
+      퀴즈를 찾을 수 없습니다.
+    </div>
+  );
 
   const currentQuestion = quiz.questions[currentIndex];
   const progress = ((currentIndex + 1) / quiz.questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-       {/* Top Status Bar */}
-       <header className="h-2 bg-slate-200">
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            className="h-full bg-indigo-600 transition-all duration-500 shadow-[0_0_15px_rgba(79,70,229,0.5)]"
-          />
-       </header>
-       
-       <header className="h-20 bg-white border-b border-slate-200 px-10 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-4">
-             <div className="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-lg shadow-indigo-100">
-                {currentIndex + 1}
-             </div>
-             <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Student</p>
-                <p className="text-sm font-black text-slate-900 leading-none">{studentName}</p>
-             </div>
+    <div className="min-h-screen ios-wallpaper flex flex-col font-sans text-white overflow-hidden p-6 gap-6">
+      {/* Top Header - Translucent iOS Glass Pill */}
+      <header className="ios-glass rounded-[28px] h-20 px-8 flex items-center justify-between shrink-0 shadow-2xl relative">
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        
+        {/* Student Info Widget */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center font-extrabold text-sm shadow-md">
+            {studentName.charAt(0)}
           </div>
-          <div className="text-center">
-             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Evaluation In Progress</p>
-             <p className="text-xs font-black text-slate-900">{quiz.title}</p>
+          <div>
+            <p className="text-[9px] font-extrabold text-white/40 uppercase tracking-wider leading-none mb-0.5">Student</p>
+            <p className="text-sm font-extrabold text-white leading-none">{studentName}</p>
           </div>
-          <div className="flex items-center gap-2 text-slate-400 font-black text-sm">
-             <span className="text-indigo-600">{currentIndex + 1}</span> / {quiz.questions.length}
+        </div>
+        
+        {/* Title Widget */}
+        <div className="text-center hidden sm:block">
+          <p className="text-[9px] font-extrabold text-indigo-300 uppercase tracking-[0.2em] mb-0.5 flex items-center justify-center gap-1">
+            <Sparkles size={10} className="animate-pulse" /> Evaluation In Progress
+          </p>
+          <p className="text-xs font-black text-white">{quiz.title}</p>
+        </div>
+        
+        {/* Progress Counter */}
+        <div className="flex items-center gap-2.5 text-white/40 font-extrabold text-sm bg-white/5 border border-white/5 px-4.5 py-2 rounded-2xl">
+          <span className="text-indigo-300 font-extrabold">{currentIndex + 1}</span> 
+          <span className="text-white/20">/</span> 
+          <span>{quiz.questions.length}</span>
+        </div>
+      </header>
+
+      {/* Main Area */}
+      <main className="flex-1 flex flex-col justify-between gap-6 overflow-hidden">
+        {/* Question Panel */}
+        <div className="flex-1 ios-glass rounded-[32px] p-8 lg:p-12 flex flex-col justify-center overflow-y-auto relative shadow-2xl">
+          {/* Subtle top glare edge */}
+          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          
+          <div className="max-w-4xl mx-auto w-full space-y-10 py-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.5, cubicBezier: [0.16, 1, 0.3, 1] }}
+                className="space-y-10"
+              >
+                {/* Math Question Text */}
+                <div className="text-center space-y-4">
+                  <MathRenderer 
+                    content={currentQuestion.question} 
+                    className="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight max-w-3xl mx-auto" 
+                  />
+                  <div className="inline-flex gap-2">
+                    <span className="bg-white/5 border border-white/10 text-white/55 px-3 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-widest">
+                      Difficulty: {currentQuestion.difficulty}
+                    </span>
+                    <span className="bg-white/5 border border-white/10 text-white/55 px-3 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-widest">
+                      {currentQuestion.depth_of_knowledge}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Multiple Choice Options */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentQuestion.options.map((opt, i) => {
+                    const isSelected = answers[currentIndex] === i;
+                    return (
+                      <motion.button
+                        key={i}
+                        whileHover={{ scale: 1.015, y: -1 }}
+                        whileTap={{ scale: 0.985 }}
+                        onClick={() => handleSelect(i)}
+                        className={cn(
+                          "group p-6 rounded-[28px] border text-left transition-all relative overflow-hidden flex items-center gap-5.5",
+                          isSelected 
+                            ? "bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-pink-500/80 border-white/20 text-white shadow-2xl glow-purple" 
+                            : "ios-glass-interactive border-white/5 text-white/70 hover:border-white/15"
+                        )}
+                      >
+                        {/* Option Number Squircle */}
+                        <div className={cn(
+                          "w-11 h-11 rounded-xl flex items-center justify-center font-extrabold text-lg shrink-0 transition-all border",
+                          isSelected 
+                            ? "bg-white text-indigo-600 border-white/10" 
+                            : "bg-white/5 text-white/40 border-white/5 group-hover:bg-white/10 group-hover:text-white"
+                        )}>
+                          {i + 1}
+                        </div>
+                        <MathRenderer 
+                          content={opt} 
+                          className={cn("text-base font-bold transition-colors", isSelected ? "text-white" : "text-white/80")} 
+                        />
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
-       </header>
+        </div>
 
-       <main className="flex-1 overflow-y-auto p-12 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
-          <div className="max-w-3xl mx-auto space-y-12">
-             <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-12"
-                >
-                   <div className="text-center">
-                      <MathRenderer content={currentQuestion.question} className="text-3xl md:text-4xl font-black text-slate-900 leading-tight tracking-tight mb-4" />
-                      <div className="inline-flex gap-2">
-                        <span className="bg-white border border-slate-200 text-slate-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{currentQuestion.difficulty}</span>
-                        <span className="bg-white border border-slate-200 text-slate-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{currentQuestion.depth_of_knowledge}</span>
-                      </div>
-                   </div>
+        {/* Footer Navigation Panel */}
+        <footer className="ios-glass rounded-[28px] p-5.5 flex justify-between items-center shadow-2xl relative shrink-0">
+          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          
+          <button
+            disabled={currentIndex === 0}
+            onClick={() => setCurrentIndex(currentIndex - 1)}
+            className="px-6 py-4 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white border border-white/5 rounded-2xl font-extrabold uppercase text-xs tracking-wider transition-all disabled:opacity-20 disabled:pointer-events-none"
+          >
+            이전 문제
+          </button>
 
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {currentQuestion.options.map((opt, i) => (
-                        <motion.button
-                          key={i}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => handleSelect(i)}
-                          className={cn(
-                            "group p-8 rounded-[32px] border-3 text-left transition-all relative overflow-hidden flex items-center gap-6",
-                            answers[currentIndex] === i 
-                              ? "bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200" 
-                              : "bg-white border-slate-100 text-slate-600 hover:border-indigo-600"
-                          )}
-                        >
-                           <div className={cn(
-                             "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 shadow-sm transition-all",
-                             answers[currentIndex] === i 
-                               ? "bg-white text-indigo-600" 
-                               : "bg-slate-50 text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600"
-                           )}>
-                              {i + 1}
-                           </div>
-                           <MathRenderer content={opt} className={cn("text-lg font-black transition-colors", answers[currentIndex] === i ? "text-white" : "text-slate-800")} />
-                        </motion.button>
-                      ))}
-                   </div>
-                </motion.div>
-             </AnimatePresence>
-
-             <footer className="pt-8 flex justify-between items-center gap-4">
-                <button
-                  disabled={currentIndex === 0}
-                  onClick={() => setCurrentIndex(currentIndex - 1)}
-                  className="px-8 py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-50 transition-all disabled:opacity-30"
-                >
-                  Previous
-                </button>
-
-                {currentIndex === quiz.questions.length - 1 ? (
-                  <button
-                    disabled={answers[currentIndex] === -1 || isSubmitting}
-                    onClick={handleSubmit}
-                    className="px-12 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-sm tracking-[0.2em] shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-3 disabled:opacity-50"
-                  >
-                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} strokeWidth={3} />}
-                    Complete Analysis
-                  </button>
-                ) : (
-                  <button
-                    disabled={answers[currentIndex] === -1}
-                    onClick={() => setCurrentIndex(currentIndex + 1)}
-                    className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-sm tracking-[0.2em] shadow-2xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center gap-3 disabled:opacity-50"
-                  >
-                    Next Question <ChevronRight size={20} strokeWidth={3} />
-                  </button>
-                )}
-             </footer>
+          {/* Dynamic Progress Indicator bar */}
+          <div className="flex-1 max-w-xs mx-6 hidden md:block">
+            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
+              />
+            </div>
           </div>
-       </main>
+
+          {currentIndex === quiz.questions.length - 1 ? (
+            <button
+              disabled={answers[currentIndex] === -1 || isSubmitting}
+              onClick={handleSubmit}
+              className="px-8 py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-2xl font-extrabold uppercase text-xs tracking-widest shadow-xl hover:shadow-indigo-500/20 transition-all flex items-center gap-2.5 disabled:opacity-40 disabled:pointer-events-none glow-purple"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={16} strokeWidth={2.5} /> 채점 진단 중...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={16} strokeWidth={3} /> 최종 제출하기
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              disabled={answers[currentIndex] === -1}
+              onClick={() => setCurrentIndex(currentIndex + 1)}
+              className="px-8 py-4 bg-white/10 hover:bg-white/15 text-white border border-white/5 rounded-2xl font-extrabold uppercase text-xs tracking-widest transition-all flex items-center gap-2.5 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              다음 문제 <ChevronRight size={16} strokeWidth={3} />
+            </button>
+          )}
+        </footer>
+      </main>
     </div>
   );
 }

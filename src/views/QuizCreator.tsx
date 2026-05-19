@@ -4,23 +4,20 @@ import {
   Upload, 
   FileText, 
   Type, 
-  Settings, 
   BrainCircuit, 
   CheckCircle2, 
   ChevronRight, 
-  ArrowLeft,
-  Loader2,
   Trash2,
   Edit2,
   Save,
-  Plus,
+  Loader2,
   Send,
   Users,
   BookOpen,
   BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { Question } from '../types';
 import { MathRenderer } from '../components/MathRenderer';
@@ -159,14 +156,16 @@ export default function QuizCreator() {
   const stepIndex = ['upload', 'analyze', 'settings', 'generate', 'review', 'publish'].indexOf(currentStep);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-transparent font-sans text-white">
       {/* Top Action Bar */}
-      <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-widest">
+      <header className="h-16 border-b border-white/5 px-8 flex items-center justify-between shrink-0 relative">
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        
+        <div className="flex items-center gap-4.5">
+          <span className="px-3 py-1 bg-white/5 border border-white/5 text-white/55 rounded-xl text-[9px] font-extrabold uppercase tracking-widest">
             STEP {stepIndex + 1}/6
           </span>
-          <h1 className="text-lg font-black tracking-tight text-slate-900">
+          <h1 className="text-lg font-extrabold tracking-tight text-white leading-none">
             {currentStep === 'upload' && "학습 자료 업로드"}
             {currentStep === 'analyze' && "자료 분석 결과"}
             {currentStep === 'settings' && "문항 생성 설정"}
@@ -175,62 +174,66 @@ export default function QuizCreator() {
             {currentStep === 'publish' && "배포 완료"}
           </h1>
         </div>
+        
         <div className="flex items-center gap-3">
           {currentStep === 'review' && (
             <>
               <button 
                 onClick={() => setCurrentStep('settings')}
-                className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors text-slate-600"
+                className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white rounded-xl text-xs font-bold transition-all"
               >
                 설정 수정
               </button>
               <button 
                 onClick={handlePublish}
                 disabled={isPublishing}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 disabled:opacity-50 uppercase tracking-tight"
+                className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-xs font-extrabold hover:shadow-indigo-500/20 transition-all flex items-center gap-2.5 disabled:opacity-50 uppercase tracking-widest glow-purple"
               >
-                {isPublishing ? <Loader2 className="animate-spin" size={18} strokeWidth={3} /> : <Send size={18} strokeWidth={3} />}
+                {isPublishing ? <Loader2 className="animate-spin" size={14} strokeWidth={2.5} /> : <Send size={14} strokeWidth={2.5} />}
                 배포하기
               </button>
             </>
           )}
           {currentStep !== 'publish' && currentStep !== 'upload' && (
-             <button onClick={() => navigate('/')} className="text-slate-400 p-2 hover:bg-slate-50 rounded-lg">
-                <Trash2 size={20} />
+             <button 
+               onClick={() => navigate('/')} 
+               className="bg-white/5 hover:bg-white/10 border border-white/5 p-2 rounded-xl text-white/40 hover:text-white transition-all"
+             >
+                <Trash2 size={16} />
              </button>
           )}
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel: Context/Settings (Only on specific steps) */}
+        {/* Left Panel: Settings Panel (Sleek Glass Column) */}
         {(currentStep === 'review' || currentStep === 'settings') && (
-          <aside className="w-80 bg-white border-r border-slate-200 p-8 flex flex-col shrink-0 overflow-y-auto">
-            <h2 className="text-[10px] uppercase font-black text-slate-400 mb-8 tracking-[0.2em]">문항 생성 설정</h2>
+          <aside className="w-80 border-r border-white/5 p-8 flex flex-col shrink-0 overflow-y-auto">
+            <h2 className="text-[9px] uppercase font-black text-white/30 mb-8 tracking-[0.2em]">문항 생성 설정</h2>
             
             <div className="space-y-8 flex-1">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">문항 세트 제목</label>
+                <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">문항 세트 제목</label>
                 <input 
                   type="text" 
                   value={settings.title}
                   onChange={e => setSettings(p => ({ ...p, title: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-sm font-bold text-white focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">학생 수준</label>
-                <div className="flex gap-2">
+                <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">학생 수준</label>
+                <div className="flex gap-2 bg-white/3 border border-white/5 p-1 rounded-2xl">
                   {['하', '중', '상'].map(level => (
                     <button 
                       key={level}
                       onClick={() => setSettings(p => ({ ...p, studentLevel: level }))}
                       className={cn(
-                        "flex-1 py-3 rounded-xl text-xs font-black transition-all border-2",
+                        "flex-1 py-3 rounded-xl text-xs font-black transition-all border",
                         settings.studentLevel === level 
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm" 
-                          : "border-slate-100 text-slate-400 hover:border-slate-200"
+                          ? "bg-white/10 border-white/10 text-white shadow-md shadow-black/10" 
+                          : "border-transparent text-white/45 hover:text-white"
                       )}
                     >
                       {level}
@@ -245,50 +248,52 @@ export default function QuizCreator() {
                 <SettingsToggle label="상세 해설 포함" checked={settings.includeExplanations} onChange={v => setSettings(p => ({ ...p, includeExplanations: v }))} />
               </div>
 
-              <div className="pt-8 border-t border-slate-100">
+              <div className="pt-8 border-t border-white/5">
                 <button 
                   onClick={startGeneration}
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-slate-800 transition-colors"
+                  className="w-full py-4.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2.5 uppercase tracking-widest shadow-lg hover:shadow-indigo-500/25 transition-all glow-purple"
                 >
-                  <BrainCircuit size={18} strokeWidth={2.5} /> 문항 재생성
+                  <BrainCircuit size={16} strokeWidth={2.5} /> 문항 재생성
                 </button>
               </div>
             </div>
           </aside>
         )}
 
-        {/* Main Area */}
-        <div className="flex-1 overflow-y-auto p-12">
+        {/* Main Workspace Area */}
+        <div className="flex-1 overflow-y-auto p-8 lg:p-12 bg-black/10">
           <AnimatePresence mode="wait">
             {currentStep === 'upload' && (
               <motion.div
                 key="upload"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={{ opacity: 0, y: -15 }}
                 className="max-w-xl mx-auto"
               >
-                <div className="bg-white rounded-[40px] p-16 shadow-2xl border border-slate-200 text-center relative overflow-hidden">
-                  <div className="absolute top-0 inset-x-0 h-2 bg-indigo-600" />
-                  <div className="bg-indigo-50 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-indigo-100">
-                    <Upload className="text-indigo-600" size={40} strokeWidth={2.5} />
+                <div className="ios-glass rounded-[40px] p-12 lg:p-16 shadow-2xl border border-white/10 text-center relative overflow-hidden">
+                  {/* Subtle top glare edge */}
+                  <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  
+                  <div className="bg-gradient-to-br from-indigo-500 to-purple-500 w-20 h-20 rounded-[28px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-indigo-500/20 glow-purple">
+                    <Upload className="text-white" size={32} strokeWidth={2.5} />
                   </div>
-                  <h2 className="text-4xl font-black mb-4 text-slate-900 tracking-tight">문항의 시작</h2>
-                  <p className="text-slate-400 mb-12 font-medium text-lg leading-relaxed">
-                    AI가 분석하고 추천 문항을 생성할 자료를 선택하세요.
+                  <h2 className="text-3xl font-extrabold mb-3 text-white tracking-tight leading-tight">문항의 시작</h2>
+                  <p className="text-white/45 mb-10 font-medium text-sm leading-relaxed max-w-xs mx-auto">
+                    AI가 정밀 분석하고 추천 문항을 생성할 원본 수학 학습 자료를 업로드하세요.
                   </p>
 
                   <div className="grid grid-cols-1 gap-4">
                     <UploadButton 
                       icon={FileText} 
-                      title="PDF 또는 이미지" 
-                      sub="학습지, 교과서 캡처 등"
+                      title="PDF 또는 이미지 파일" 
+                      sub="학습지, 교과서 캡처 이미지 등"
                       onClick={() => { setSourceType('pdf'); fileInputRef.current?.click(); }}
                     />
                     <UploadButton 
                       icon={Type} 
                       title="텍스트 직접 입력" 
-                      sub="개념 설명이나 문제 텍스트"
+                      sub="교재 개념 설명 및 문제 텍스트"
                       onClick={() => { setSourceType('text'); setCurrentStep('settings'); }} 
                     />
                   </div>
@@ -309,52 +314,56 @@ export default function QuizCreator() {
                 className="max-w-2xl mx-auto"
               >
                 {isAnalyzing ? (
-                  <div className="bg-white rounded-[40px] p-20 shadow-2xl text-center border border-slate-200">
-                    <div className="relative w-32 h-32 mx-auto mb-10">
-                      <div className="absolute inset-0 border-8 border-slate-100 rounded-full"></div>
-                      <div className="absolute inset-0 border-8 border-t-indigo-600 rounded-full animate-spin"></div>
-                      <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
-                        <BrainCircuit size={48} strokeWidth={2.5} />
+                  <div className="ios-glass rounded-[40px] p-16 lg:p-20 shadow-2xl text-center border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                    
+                    <div className="relative w-28 h-28 mx-auto mb-10">
+                      <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center text-indigo-400">
+                        <BrainCircuit size={38} strokeWidth={2.5} />
                       </div>
                     </div>
-                    <h3 className="text-3xl font-black mb-4 tracking-tight">AI 심층 분석 중</h3>
-                    <p className="text-slate-500 font-medium">단원명, 핵심 개념, 추천 수준을 파악하고 있습니다.</p>
+                    <h3 className="text-2xl font-extrabold mb-3 tracking-tight text-white leading-tight">AI 심층 분석 중</h3>
+                    <p className="text-white/45 text-sm font-medium">단원명, 핵심 연계 개념, AI 추천 학생 수준을 분석하고 있습니다.</p>
                   </div>
                 ) : analysis && (
-                  <div className="bg-white rounded-[40px] p-12 shadow-2xl border border-slate-200">
-                    <div className="flex items-center gap-4 mb-10 pb-6 border-b border-slate-100">
-                       <div className="bg-indigo-600 p-4 rounded-2xl text-white shadow-lg shadow-indigo-200">
-                         <CheckCircle2 size={32} strokeWidth={2.5} />
+                  <div className="ios-glass rounded-[40px] p-10 lg:p-12 shadow-2xl border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                    
+                    <div className="flex items-center gap-4.5 mb-10 pb-6 border-b border-white/5">
+                       <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-3.5 rounded-2xl text-white shadow-lg shadow-indigo-500/15 glow-purple">
+                         <CheckCircle2 size={26} strokeWidth={2.5} />
                        </div>
                        <div>
-                         <h3 className="text-2xl font-black tracking-tight text-slate-900">분석이 완료되었습니다</h3>
-                         <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">AI Recommendation Ready</p>
+                         <h3 className="text-2xl font-extrabold tracking-tight text-white leading-tight">분석이 완료되었습니다</h3>
+                         <p className="text-indigo-400 font-extrabold uppercase text-[9px] tracking-widest mt-1">AI Recommendation Ready</p>
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 mb-12">
-                      <AnalysisBox label="학년" value={analysis.expected_grade ? `${analysis.expected_grade}학년` : '자동 분석됨'} icon={Users} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
+                      <AnalysisBox label="추천 학년" value={analysis.expected_grade ? `${analysis.expected_grade}학년` : '자동 분석됨'} icon={Users} />
                       <AnalysisBox label="단원명" value={analysis.unit || '자동 분석됨'} icon={BookOpen} />
                       <AnalysisBox label="원본 수준" value={analysis.original_difficulty || '자동 분석됨'} icon={BarChart3} />
                       <AnalysisBox label="AI 추천 수준" value={analysis.recommended_level || '자동 분석됨'} icon={BrainCircuit} />
                     </div>
 
-                    <div className="mb-12">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">학습 핵심 개념</p>
+                    <div className="mb-10">
+                      <p className="text-[9px] font-black text-white/35 uppercase tracking-widest mb-4">학습 연계 핵심 개념</p>
                       <div className="flex flex-wrap gap-2">
                         {analysis.key_concepts ? analysis.key_concepts.map((c: string) => (
-                          <span key={c} className="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 text-sm font-bold border border-slate-200">{c}</span>
+                          <span key={c} className="bg-white/5 px-4.5 py-2 border border-white/5 rounded-2xl text-white/80 text-sm font-semibold">{c}</span>
                         )) : (
-                          <span className="text-slate-400 italic text-sm">분석된 개념이 없습니다.</span>
+                          <span className="text-white/20 italic text-sm">분석된 개념이 없습니다.</span>
                         )}
                       </div>
                     </div>
 
                     <button 
                       onClick={() => setCurrentStep('settings')}
-                      className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 text-lg hover:bg-indigo-700 transition-all uppercase tracking-tight"
+                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-5 rounded-2xl font-extrabold shadow-xl hover:shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 text-base tracking-tight glow-purple"
                     >
-                      문항 생성 설정 진행 <ChevronRight size={20} strokeWidth={3} />
+                      문항 생성 설정 진행 <ChevronRight size={18} strokeWidth={3} />
                     </button>
                   </div>
                 )}
@@ -364,14 +373,21 @@ export default function QuizCreator() {
             {currentStep === 'generate' && (
                <motion.div
                 key="generate"
-                className="max-w-xl mx-auto bg-slate-900 rounded-[40px] p-24 shadow-2xl text-center relative overflow-hidden"
+                className="max-w-xl mx-auto"
                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16" />
-                  <div className="relative z-10">
-                    <Loader2 className="animate-spin text-indigo-500 mx-auto mb-8" size={64} strokeWidth={2.5} />
-                    <h3 className="text-3xl font-black mb-4 text-white tracking-tight">맞춤형 문항 생성 중</h3>
-                    <p className="text-slate-400 font-medium">설계된 수준에 따라 정밀한 수학 문제를 설계하고 있습니다.</p>
-                  </div>
+                 <div className="ios-glass rounded-[40px] p-20 shadow-2xl text-center border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                    
+                    <div className="relative w-24 h-24 mx-auto mb-8 flex items-center justify-center">
+                      <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin"></div>
+                      <Loader2 className="animate-spin text-indigo-400" size={38} strokeWidth={2.5} />
+                    </div>
+                    <h3 className="text-2xl font-extrabold mb-3 text-white tracking-tight leading-tight">맞춤형 문항 생성 중</h3>
+                    <p className="text-white/45 text-sm font-medium leading-relaxed max-w-xs mx-auto">
+                      설계된 학생 수준에 따라 완벽한 수학 문제를 정밀 설계 및 생성하고 있습니다.
+                    </p>
+                 </div>
                </motion.div>
             )}
 
@@ -382,11 +398,11 @@ export default function QuizCreator() {
                 animate={{ opacity: 1 }}
                 className="space-y-8"
               >
-                  <div className="flex justify-between items-end mb-4">
-                    <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">생성된 문항 ({questions.length}개)</h2>
+                  <div className="flex justify-between items-end mb-4 border-b border-white/5 pb-3">
+                    <h2 className="text-[9px] font-black text-white/35 uppercase tracking-widest">생성된 맞춤 문항 세트 ({questions.length}개)</h2>
                     <div className="flex gap-2">
-                      <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">High Accuracy</span>
-                      <span className="px-3 py-1 bg-sky-50 text-sky-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Customized</span>
+                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 rounded-lg text-[9px] font-extrabold uppercase tracking-wider">High Accuracy</span>
+                      <span className="px-3 py-1 bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 rounded-lg text-[9px] font-extrabold uppercase tracking-wider">AI Generated</span>
                     </div>
                   </div>
 
@@ -407,17 +423,20 @@ export default function QuizCreator() {
                 key="publish"
                 className="max-w-xl mx-auto"
                >
-                  <div className="bg-white rounded-[40px] p-16 shadow-2xl border border-slate-200 text-center relative overflow-hidden">
-                    <div className="absolute top-0 inset-x-0 h-2 bg-emerald-500" />
-                    <div className="bg-emerald-50 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-10 text-emerald-600 shadow-lg shadow-emerald-50">
-                       <CheckCircle2 size={56} strokeWidth={2.5} />
-                    </div>
-                    <h2 className="text-4xl font-black mb-4 tracking-tight">배포 완료!</h2>
-                    <p className="text-slate-400 mb-12 font-medium">학생들에게 초대코드를 공유하여 학습을 시작하세요.</p>
+                  <div className="ios-glass rounded-[40px] p-12 lg:p-16 shadow-2xl border border-white/10 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     
-                    <div className="bg-slate-50 p-10 rounded-[32px] border border-slate-100 mb-12 shadow-inner">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Invite Code</p>
-                       <p className="text-6xl font-black tracking-tighter text-indigo-600 select-all uppercase">
+                    <div className="bg-gradient-to-br from-emerald-400 to-teal-500 w-20 h-20 rounded-[28px] flex items-center justify-center mx-auto mb-10 text-white shadow-lg shadow-emerald-500/15 glow-green">
+                       <CheckCircle2 size={40} strokeWidth={2.5} />
+                    </div>
+                    <h2 className="text-3xl font-extrabold mb-3 text-white tracking-tight leading-tight">배포 완료!</h2>
+                    <p className="text-white/45 mb-10 font-medium text-sm leading-relaxed max-w-xs mx-auto">
+                      학생들에게 전용 시험지 초대코드를 전달하여 맞춤 평가를 시작하세요.
+                    </p>
+                    
+                    <div className="bg-white/3 border border-white/5 p-8 rounded-[32px] mb-10 shadow-inner">
+                       <p className="text-[9px] font-black text-white/35 uppercase tracking-[0.2em] mb-3">Invite Code</p>
+                       <p className="text-5xl font-extrabold tracking-tighter text-indigo-300 select-all uppercase">
                           {inviteCode}
                        </p>
                     </div>
@@ -426,15 +445,15 @@ export default function QuizCreator() {
                        <button 
                         onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/quiz/${inviteCode}`);
-                          alert('링크가 복사되었습니다!');
+                          alert('진단 링크가 복사되었습니다!');
                         }}
-                        className="bg-indigo-600 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase text-sm tracking-widest"
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-5 rounded-2xl font-extrabold flex items-center justify-center gap-2.5 shadow-xl hover:shadow-indigo-500/25 transition-all text-sm tracking-wide glow-purple"
                        >
-                          <Send size={20} strokeWidth={3} /> 링크 복사하기
+                          <Send size={18} strokeWidth={2.5} /> 링크 복사하기
                        </button>
                        <button 
                         onClick={() => navigate('/')}
-                        className="bg-white text-slate-600 py-5 rounded-2xl font-black hover:bg-slate-50 border border-slate-200 uppercase text-xs tracking-widest transition-colors"
+                        className="bg-white/5 hover:bg-white/10 text-white border border-white/5 py-5 rounded-2xl font-bold uppercase text-xs tracking-wider transition-colors"
                        >
                           대시보드로 돌아가기
                        </button>
@@ -453,14 +472,14 @@ function UploadButton({ icon: Icon, title, sub, onClick }: { icon: any, title: s
   return (
     <button 
       onClick={onClick}
-      className="p-8 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-indigo-600 hover:bg-indigo-50/30 transition-all duration-300 group flex items-center gap-6 text-left"
+      className="p-6 bg-white/3 border border-white/5 rounded-3xl hover:border-indigo-500/40 hover:bg-white/8 transition-all duration-300 group flex items-center gap-5 text-left w-full"
     >
-      <div className="bg-white p-4 rounded-2xl shadow-sm text-slate-400 group-hover:text-indigo-600 group-hover:scale-110 transition-all duration-300">
-        <Icon size={32} strokeWidth={2.5} />
+      <div className="bg-white/5 border border-white/5 p-3.5 rounded-2xl text-white/50 group-hover:text-indigo-400 group-hover:scale-105 transition-all duration-300 shadow-sm shrink-0">
+        <Icon size={24} strokeWidth={2.5} />
       </div>
       <div>
-        <p className="font-black text-xl text-slate-800 tracking-tight mb-0.5">{title}</p>
-        <p className="text-slate-400 font-bold text-xs uppercase tracking-tight">{sub}</p>
+        <p className="font-extrabold text-lg text-white tracking-tight mb-0.5">{title}</p>
+        <p className="text-white/40 font-bold text-[10px] uppercase tracking-wider">{sub}</p>
       </div>
     </button>
   );
@@ -468,13 +487,13 @@ function UploadButton({ icon: Icon, title, sub, onClick }: { icon: any, title: s
 
 function AnalysisBox({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
   return (
-    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center gap-4">
-      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-500 shadow-sm">
-        <Icon size={24} strokeWidth={2.5} />
+    <div className="bg-white/3 border border-white/5 p-5.5 rounded-2xl flex items-center gap-4">
+      <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-indigo-400 shadow-sm shrink-0">
+        <Icon size={20} strokeWidth={2.5} />
       </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-lg font-black text-slate-800 tracking-tight">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[8px] font-black text-white/35 uppercase tracking-widest mb-0.5 leading-none">{label}</p>
+        <p className="text-base font-extrabold text-white tracking-tight truncate leading-tight">{value}</p>
       </div>
     </div>
   );
@@ -482,18 +501,18 @@ function AnalysisBox({ label, value, icon: Icon }: { label: string, value: strin
 
 function SettingsToggle({ label, checked, onChange }: { label: string, checked: boolean, onChange: (v: boolean) => void }) {
   return (
-    <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
-      <span className="text-xs font-black text-slate-600 uppercase tracking-tight">{label}</span>
+    <div className="flex justify-between items-center bg-white/3 border border-white/5 p-4 rounded-2xl">
+      <span className="text-xs font-bold text-white/60 tracking-tight">{label}</span>
       <button 
         onClick={() => onChange(!checked)}
         className={cn(
-          "w-12 h-6 rounded-full relative transition-all duration-300",
-          checked ? "bg-indigo-600" : "bg-slate-300"
+          "w-11 h-6 rounded-full relative transition-all duration-300 border",
+          checked ? "bg-indigo-600 border-indigo-500" : "bg-white/5 border-white/10"
         )}
       >
         <div className={cn(
-          "absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-sm",
-          checked ? "translate-x-6" : ""
+          "absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full transition-transform duration-300 shadow-md",
+          checked ? "translate-x-5" : ""
         )} />
       </button>
     </div>
@@ -505,31 +524,31 @@ function QuestionEditor({ question, index, onChange }: { question: Question, ind
   const [edited, setEdited] = useState(question);
 
   return (
-    <div className="bg-white rounded-[32px] p-10 border border-slate-200 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
-       <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div className="ios-glass rounded-[32px] p-8 lg:p-10 border border-white/10 shadow-sm relative overflow-hidden group">
+       <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
        
-       <div className="flex justify-between items-start mb-10">
+       <div className="flex justify-between items-start mb-8 pb-5 border-b border-white/5">
           <div className="flex items-center gap-4">
-            <span className="bg-indigo-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg shadow-indigo-100">
+            <span className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-lg shadow-md shadow-indigo-500/10">
               {index + 1}
             </span>
             <div>
-               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Question Details</h4>
-               <div className="flex gap-2 mt-1">
-                 <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{question.difficulty}</span>
-                 <span className="bg-sky-50 text-sky-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{question.depth_of_knowledge}</span>
+               <h4 className="text-[9px] font-black text-white/35 uppercase tracking-[0.2em] leading-none mb-1.5">Question Details</h4>
+               <div className="flex gap-1.5 leading-none">
+                 <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider">{question.difficulty}</span>
+                 <span className="bg-sky-500/10 text-sky-400 border border-sky-500/15 px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider">{question.depth_of_knowledge}</span>
                </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
              <button 
               onClick={() => setIsEditing(!isEditing)}
-              className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+              className="p-2.5 text-white/40 hover:text-indigo-400 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/5"
              >
-                {isEditing ? <Save size={20} strokeWidth={2.5} /> : <Edit2 size={20} strokeWidth={2.5} />}
+                {isEditing ? <Save size={16} strokeWidth={2.5} /> : <Edit2 size={16} strokeWidth={2.5} />}
              </button>
-             <button className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                <Trash2 size={20} />
+             <button className="p-2.5 text-white/40 hover:text-rose-400 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/5">
+                <Trash2 size={16} />
              </button>
           </div>
        </div>
@@ -537,18 +556,18 @@ function QuestionEditor({ question, index, onChange }: { question: Question, ind
        {isEditing ? (
          <div className="space-y-6">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Text</label>
+              <label className="block text-[9px] font-black text-white/35 uppercase tracking-widest mb-2 ml-1">Question Text</label>
               <textarea 
                 value={edited.question} 
                 onChange={e => setEdited({...edited, question: e.target.value})}
-                className="w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full p-5 bg-white/5 border border-white/5 rounded-2xl font-bold text-white focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
                 rows={4}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {edited.options.map((opt, i) => (
                 <div key={i} className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Option {i + 1}</label>
+                  <label className="text-[9px] font-black text-white/35 uppercase tracking-widest mb-1.5 ml-1">Option {i + 1}</label>
                   <input 
                     value={opt}
                     onChange={e => {
@@ -557,8 +576,8 @@ function QuestionEditor({ question, index, onChange }: { question: Question, ind
                       setEdited({...edited, options: newOpts});
                     }}
                     className={cn(
-                      "w-full p-4 border-2 rounded-2xl font-bold transition-all", 
-                      i === edited.answer ? "border-emerald-600 bg-emerald-50" : "border-slate-100 bg-white"
+                      "w-full p-4 border rounded-2xl font-bold text-white transition-all bg-white/3", 
+                      i === edited.answer ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" : "border-white/5"
                     )}
                   />
                 </div>
@@ -566,44 +585,46 @@ function QuestionEditor({ question, index, onChange }: { question: Question, ind
             </div>
             <button 
               onClick={() => { onChange(edited); setIsEditing(false); }}
-              className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest"
+              className="bg-white text-slate-900 px-7 py-3 rounded-xl font-extrabold uppercase text-xs tracking-wider shadow-md hover:bg-indigo-50 transition-all"
             >
               Update Question
             </button>
          </div>
        ) : (
          <div>
-            <MathRenderer content={question.question} className="text-2xl font-black mb-10 text-slate-800 leading-tight tracking-tight" />
+            <MathRenderer content={question.question} className="text-2xl font-extrabold mb-8 text-white leading-snug tracking-tight" />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                {question.options.map((opt, i) => (
                  <div 
                   key={i} 
                   className={cn(
-                    "p-6 rounded-[24px] border-2 flex items-center gap-4 transition-all",
-                    i === question.answer ? "border-indigo-600 bg-indigo-50" : "border-slate-50 bg-slate-50 shadow-inner"
+                    "p-5 rounded-[22px] border flex items-center gap-4 transition-all bg-white/3",
+                    i === question.answer 
+                      ? "border-indigo-500/30 bg-indigo-500/5 text-indigo-300" 
+                      : "border-white/5"
                   )}
                  >
                     <span className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shrink-0 shadow-sm",
-                      i === question.answer ? "bg-indigo-600 text-white" : "bg-white text-slate-400"
+                      "w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-base shrink-0 border shadow-sm",
+                      i === question.answer ? "bg-indigo-600 border-white/10 text-white" : "bg-white/5 border-white/5 text-white/30"
                     )}>
                       {i + 1}
                     </span>
-                    <MathRenderer content={opt} className="font-bold text-lg text-slate-700" />
+                    <MathRenderer content={opt} className="font-semibold text-sm text-white/80" />
                  </div>
                ))}
             </div>
             
-            <div className="bg-slate-900 rounded-[32px] p-8 border border-slate-800">
-               <div className="flex items-center gap-3 mb-4">
-                  <BrainCircuit className="text-indigo-400" size={20} strokeWidth={2.5} />
-                  <span className="font-black text-[10px] text-indigo-400 uppercase tracking-[0.2em]">Solution & Misconception Insights</span>
+            <div className="bg-white/3 border border-white/5 rounded-[28px] p-6.5">
+               <div className="flex items-center gap-2.5 mb-4 border-b border-white/5 pb-2.5">
+                  <BrainCircuit className="text-indigo-400" size={18} strokeWidth={2.5} />
+                  <span className="font-black text-[9px] text-indigo-400 uppercase tracking-[0.2em] mt-0.5">Solution & Misconception Insights</span>
                </div>
-               <p className="text-slate-300 font-medium leading-relaxed mb-6 bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">{question.explanation}</p>
+               <p className="text-white/70 font-semibold text-xs leading-relaxed bg-white/3 p-5 rounded-2xl border border-white/5 mb-5">{question.explanation}</p>
                <div className="bg-indigo-500/10 p-5 rounded-2xl border border-indigo-500/20">
-                  <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">AI Debug Point</p>
-                  <p className="text-sm text-indigo-300 font-bold leading-snug">{question.misconception_points}</p>
+                  <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">AI Diagnostic Focus Point</p>
+                  <p className="text-xs text-indigo-300 font-bold leading-normal">{question.misconception_points}</p>
                </div>
             </div>
          </div>
