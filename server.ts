@@ -20,23 +20,44 @@ const ai = new GoogleGenAI({
   }
 });
 
-async function callGeminiWithRetry(apiCall: () => Promise<any>, retries = 3, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await apiCall();
-    } catch (error: any) {
-      const isTemporary = error.status === 503 || error.status === 429 || 
-                          (error.message && (error.message.includes('503') || error.message.includes('demand') || error.message.includes('429')));
-      
-      if (isTemporary && i < retries - 1) {
-        console.warn(`Gemini API temporary error (${error.status || '503'}). Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
-        continue;
+async function generateContentWithFallback(config: {
+  contents: any;
+  config?: any;
+}) {
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError: any = null;
+
+  for (const model of models) {
+    let delay = 1000;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        console.log(`[API Call] Attempting generateContent with model: ${model} (Attempt ${attempt + 1}/2)`);
+        return await ai.models.generateContent({
+          model,
+          ...config
+        });
+      } catch (error: any) {
+        lastError = error;
+        const errStr = String(error) + " " + (error.message ? String(error.message) : "") + " " + JSON.stringify(error);
+        const isTemporary = errStr.includes('503') || 
+                            errStr.includes('429') || 
+                            errStr.includes('demand') || 
+                            errStr.includes('UNAVAILABLE') || 
+                            errStr.includes('resource exhausted') ||
+                            error.status === 503 || 
+                            error.status === 429;
+
+        if (isTemporary) {
+          console.warn(`[API Warning] Model ${model} returned temporary error: ${error.message || '503 Service Unavailable'}. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
   }
+  throw lastError;
 }
 
 // AI Routes
@@ -67,8 +88,7 @@ app.post("/api/quiz/analyze", async (req, res) => {
       - possible_question_types: string[]
     `});
 
-    const result = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const result = await generateContentWithFallback({
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -85,7 +105,7 @@ app.post("/api/quiz/analyze", async (req, res) => {
           }
         }
       }
-    }));
+    });
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
@@ -144,8 +164,7 @@ app.post("/api/quiz/generate", async (req, res) => {
       - depth_of_knowledge: string (사고 수준)
     `});
 
-    const result = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const result = await generateContentWithFallback({
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -166,7 +185,7 @@ app.post("/api/quiz/generate", async (req, res) => {
           }
         }
       }
-    }));
+    });
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
@@ -201,8 +220,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
       - weaknesses: string
     `;
 
-    const result = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const result = await generateContentWithFallback({
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -222,7 +240,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
           }
         }
       }
-    }));
+    });
 
     const text = result.text;
     if (!text) throw new Error("AI returned an empty response");
