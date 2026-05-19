@@ -87,6 +87,60 @@ const JAMBOT_SYSTEM_INSTRUCTION = `
 3. 출력은 반드시 약속된 JSON Schema 형태만 반환해야 합니다. 다른 부가적인 텍스트는 절대 출력하지 마세요.
 `;
 
+function getLocalMockJambotResponse(tiptapText: string, chatHistory: any[]): any {
+  const studentMessagesCount = chatHistory.filter((m: any) => m.role === 'student' || m.role === 'user').length;
+  
+  let phase: "UNDERSTANDING_CHECK" | "DEEPENING" | "REAL_WORLD_TRANSFER" | "COMPLETE" = "UNDERSTANDING_CHECK";
+  if (studentMessagesCount >= 3) {
+    phase = "COMPLETE";
+  } else if (studentMessagesCount === 2) {
+    phase = "REAL_WORLD_TRANSFER";
+  } else if (studentMessagesCount === 1) {
+    phase = "DEEPENING";
+  }
+
+  const text = tiptapText.toLowerCase();
+  let topic = "오늘 배운 주제";
+  if (text.includes("인권")) topic = "인권";
+  else if (text.includes("수학")) topic = "수학 개념";
+  else if (text.includes("과학") || text.includes("식물")) topic = "과학 탐구";
+
+  const responses = {
+    UNDERSTANDING_CHECK: {
+      internal_analysis: `[로컬 시뮬레이션] 학생이 '${topic}'에 대해 첫 노트를 정리했습니다. 개념을 요약한 문장에서 핵심 키워드를 포착하여 기초적인 개념 확인 질문을 던집니다.`,
+      current_phase: "UNDERSTANDING_CHECK",
+      praise_message: `아따! '${topic}'에 대해 핵심을 콕 짚어서 아주 깔끔하게 노트를 적어부렀구마잉! 칭찬의 박수를 보낸다잉! 👏`,
+      socratic_question: topic === "인권" 
+        ? `노트에 '인권은 사람이 태어나자마자 동일하게 가진 권리'라고 적어주었는데, 그렇다면 이 인권이라는 권리는 국가나 법이 만들어지기 전부터 사람에게 당연히 있었던 걸까, 아니면 나라에서 법으로 정해준 다음에야 생겨난 걸까? 네 생각을 자유롭게 들려줘잉! 🤔`
+        : `정리한 내용을 보니 기초 뼈대를 아주 잘 잡았구마잉! 그렇다면 이 개념에서 가장 핵심이 되는 단어가 무엇이라고 생각하는지, 그리고 왜 그렇게 생각하는지 첫 질문을 던질 텐게 차근차근 답변해보소! 🤔`
+    },
+    DEEPENING: {
+      internal_analysis: `[로컬 시뮬레이션] 학생이 기초 개념 유도 질문에 잘 대답했습니다. 개념의 본질과 가치를 탐구하는 2단계 심화 질문으로 유도합니다.`,
+      current_phase: "DEEPENING",
+      praise_message: `아따, 생각을 깊게 해서 기똥차게 답변을 해부렀구마잉! 네 의견을 들으니 아주 듬직하다잉! ✨`,
+      socratic_question: topic === "인권"
+        ? `오호, 법이 있기 전부터 당연히 가지고 태어난 권리라고 생각했구나! 그렇다면 만약 '다른 사람의 인권(자유)을 지켜주기 위해 내 편리함을 조금 양보해야 하는 상황'이 생긴다면, 우리는 어떻게 행동하는 것이 조화로울까? 일상적인 예시와 함께 말해줄 수 있니? 💡`
+        : `아주 흥미로운 접근이구마잉! 그렇다면 이 원리가 적용되는 과정에서 우리가 놓치기 쉬운 예외 상황이나 더 깊은 원리가 있다면 무엇일지 함께 고민해볼까잉? 💡`
+    },
+    REAL_WORLD_TRANSFER: {
+      internal_analysis: `[로컬 시뮬레이션] 심화 탐구를 마치고 일상생활 적용 3단계(REAL_WORLD_TRANSFER)로 진입합니다.`,
+      current_phase: "REAL_WORLD_TRANSFER",
+      praise_message: `우와, 배려와 논리가 듬뿍 담긴 멋진 생각이구마잉! 잼봇이 큰 감동을 받아부렀어! 🚀`,
+      socratic_question: topic === "인권"
+        ? `자, 이제 마지막 질문이단다! 우리가 오늘 배운 '인권'이 일상생활(학교, 놀이터, 가정 등)에서 실제로 침해받거나 존중받지 못하는 상황을 본 적이 있니? 그때 오늘 배운 개념을 적용해 어떻게 해결할 수 있을지 일상 속 방법 하나를 이야기해보자! 🚀`
+        : `그렇다면 배운 이 개념을 우리 학교나 동네, 혹은 일상생활 속에서 실제로 발견할 수 있는 사례가 무엇이 있을까? 실생활 문제에 이 지식을 어떻게 써먹을 수 있을지 한 가지만 예를 들어보소! 🚀`
+    },
+    COMPLETE: {
+      internal_analysis: `[로컬 시뮬레이션] 3단계를 모두 마치고 대화를 완료(COMPLETE) 처리합니다.`,
+      current_phase: "COMPLETE",
+      praise_message: `아따, 대단하다잉! 개념 확인부터 심화 대화, 그리고 일상생활 적용까지 3단계 미션을 완벽히 완수해부렀소! 🎉`,
+      socratic_question: `오늘 공부와 대화를 통해 '${topic}'에 대해 확실하게 네 지식으로 만든 것을 진심으로 축하한다잉! 배운 내용을 잊지 말고 일상에서도 인권을 멋지게 실천하는 어린이가 되자꾸나! 복습 완료 버튼을 누르고 오늘의 메타인지 여행을 마무리하소! 🏆`
+    }
+  };
+
+  return responses[phase];
+}
+
 // AI Endpoint: /api/chat
 app.post("/api/chat", async (req, res) => {
   try {
@@ -150,8 +204,20 @@ ${chatHistoryText}
     const cleanJson = responseText.replace(/^```json\n?|\n?```$/g, "").trim();
     res.json(JSON.parse(cleanJson));
   } catch (error: any) {
-    console.error("AI Chat Error:", error);
-    res.status(500).json({ error: error.message || "AI Chat failed" });
+    console.error("AI Chat Error, launching local mock engine fallback:", error);
+    try {
+      const { tiptapJson, chatHistory } = req.body;
+      const formattedTiptap = typeof tiptapJson === 'string' 
+        ? tiptapJson 
+        : JSON.stringify(tiptapJson, null, 2);
+      
+      const fallbackResponse = getLocalMockJambotResponse(formattedTiptap, chatHistory || []);
+      // Add a simulation warning to internal analysis
+      fallbackResponse.internal_analysis = `[💡 Gemini Quota Exceeded Fallback] ${fallbackResponse.internal_analysis}`;
+      res.json(fallbackResponse);
+    } catch (fallbackErr) {
+      res.status(500).json({ error: error.message || "AI Chat failed" });
+    }
   }
 });
 
