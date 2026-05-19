@@ -1,41 +1,27 @@
-export interface Question {
-  question: string;
-  options: string[];
-  answer: number; // 0-3
-  explanation: string;
-  misconception_points: string;
-  difficulty: '하' | '중' | '상';
-  depth_of_knowledge: string;
-}
-
-export interface Quiz {
+export interface Room {
   id: string;
+  room_code: string;
   teacher_id: string;
   title: string;
-  source_type: 'pdf' | 'image' | 'text';
-  student_level: string;
-  question_count: number;
-  questions: Question[];
+  folder_name?: string;
   created_at: string;
-  invite_code: string;
-  status: 'draft' | 'published';
 }
 
-export interface Submission {
-  id: string;
-  quiz_id: string;
-  student_name: string;
-  student_id: string;
-  answers: number[];
-  analysis: {
-    score: number;
-    total_questions: number;
-    accuracy: number;
-    student_level: string;
-    incorrect_questions: number[];
-    misconception_types: string[];
-    missing_concepts: string[];
-    recommended_next_level: string;
-  };
+export interface ChatMessage {
+  role: 'student' | 'jambot';
+  content: string;
+  internal_analysis?: string;
+  phase?: 'UNDERSTANDING_CHECK' | 'DEEPENING' | 'REAL_WORLD_TRANSFER' | 'COMPLETE';
   created_at: string;
+}
+
+export interface StudentSubmission {
+  id: string;
+  room_code: string;
+  student_name: string;
+  tiptap_json: string; // Serialized JSON string of the Tiptap document
+  chat_history: ChatMessage[];
+  current_phase: 'UNDERSTANDING_CHECK' | 'DEEPENING' | 'REAL_WORLD_TRANSFER' | 'COMPLETE';
+  status: '미제출' | '진행중' | '완료';
+  updated_at: string;
 }

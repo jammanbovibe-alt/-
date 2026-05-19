@@ -1,225 +1,564 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, BarChart3, Clock, ChevronRight, FileText, Sparkles } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { Quiz } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FolderPlus, Plus, Sparkles, BookOpen, Users, Folder, 
+  ChevronRight, Calendar, User, FileText, Download, CheckCircle, 
+  Clock, AlertCircle, RefreshCw, LogOut, Code
+} from 'lucide-react';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import { Room, StudentSubmission, ChatMessage } from '../types';
 import { cn } from '../lib/utils';
-import { motion } from 'framer-motion';
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  
+  // Folders and Rooms State
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [folders, setFolders] = useState<string[]>(['기본 수업']);
+  const [selectedFolder, setSelectedFolder] = useState<string>('기본 수업');
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  
+  // Students and Submissions State
+  const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<StudentSubmission | null>(null);
+  
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Dialog States
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  
+  // Tiptap Read-only instance to display student note
+  const readOnlyEditor = useEditor({
+    editable: false,
+    extensions: [StarterKit, Image, Link],
+    content: '<p>학생을 선택하면 노트 본문이 여기에 보입니다.</p>'
+  });
 
+  // Load selected submission notes into the read-only editor
   useEffect(() => {
-    try {
-      const q = query(collection(db, 'quizzes'), orderBy('created_at', 'desc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const quizData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quiz));
-        setQuizzes(quizData);
-        setLoading(false);
-      });
-      return () => unsubscribe();
-    } catch (e) {
-      console.warn("Firebase not ready yet", e);
-      setLoading(false);
+    if (readOnlyEditor && selectedSubmission) {
+      try {
+        const json = JSON.parse(selectedSubmission.tiptap_json);
+        readOnlyEditor.commands.setContent(json);
+      } catch (err) {
+        readOnlyEditor.commands.setContent(`<p>${selectedSubmission.tiptap_json || '작성된 내용이 없습니다.'}</p>`);
+      }
     }
-  }, []);
+  }, [selectedSubmission, readOnlyEditor]);
 
-  return (
-    <div className="p-8 lg:p-12 space-y-12">
-      {/* Premium Apple Dashboard Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-              <Sparkles size={10} className="animate-pulse" /> EduAI Teacher Dashboard
-            </span>
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
-            선생님 대시보드
-          </h1>
-          <p className="text-white/50 font-medium text-sm mt-1.5">
-            새로운 맞춤형 문항을 제작하고 학생들의 학습 데이터를 실시간 분석하세요.
-          </p>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.03, y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => navigate('/create')}
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white px-7 py-4 rounded-[20px] font-extrabold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/35 transition-all text-sm tracking-tight border border-white/10 shrink-0 glow-purple"
-        >
-          <Plus size={18} strokeWidth={3} />
-          새 문항 제작하기
-        </motion.button>
-      </header>
-
-      {/* Control Center Grid (Stats Widgets) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard 
-          title="진행 중인 퀴즈" 
-          value={quizzes.filter(q => q.status === 'published').length} 
-          icon={Clock} 
-          color="indigo" 
-          description="실시간 참여가 가능한 시험지 수"
-        />
-        <StatCard 
-          title="총 참여 학생" 
-          value="--" 
-          icon={Users} 
-          color="purple" 
-          description="전체 퀴즈에 참여한 학생 수"
-        />
-        <StatCard 
-          title="평균 정답률" 
-          value="--" 
-          icon={BarChart3} 
-          color="emerald" 
-          description="학생들의 전반적인 문항 이해도"
-        />
-      </div>
-
-      {/* Main List Section */}
-      <section className="space-y-6">
-        <div className="flex justify-between items-center border-b border-white/5 pb-4">
-          <h2 className="text-xs font-black text-white/40 uppercase tracking-widest">최근 제작 문항 목록</h2>
-          <button className="text-indigo-400 font-bold text-xs hover:text-indigo-300 flex items-center gap-1 transition-colors uppercase tracking-wider">
-            전체 보기 <ChevronRight size={14} strokeWidth={3} />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-24">
-            <div className="relative w-12 h-12">
-              <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
-              <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin"></div>
-            </div>
-          </div>
-        ) : quizzes.length === 0 ? (
-          <div className="ios-glass rounded-[32px] p-16 text-center border border-white/5 shadow-inner">
-            <div className="bg-white/5 border border-white/5 w-20 h-20 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <FileText className="text-white/30" size={32} />
-            </div>
-            <p className="text-white/60 mb-6 font-bold text-lg">아직 제작된 시험지(문항)가 없습니다.</p>
-            <button
-               onClick={() => navigate('/create')}
-               className="text-indigo-400 font-black hover:text-indigo-300 transition-colors uppercase text-sm tracking-tight inline-flex items-center gap-1.5"
-            >
-              첫 번째 문항 제작 시작하기 <ChevronRight size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {quizzes.map((quiz, idx) => (
-              <QuizCard key={quiz.id} quiz={quiz} index={idx} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Featured iOS 26 Intelligent Banner */}
-      <div className="bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-black/30 border border-white/10 rounded-[32px] p-10 text-white shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full -mr-20 -mt-20 group-hover:bg-indigo-500/20 transition-all duration-700 blur-2xl" />
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className="max-w-xl">
-            <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-block mb-3.5 shadow-sm">
-              Intelligent Analytics
-            </span>
-            <h3 className="text-2xl font-black mb-3 text-white tracking-tight leading-tight">
-              AI 기반 맞춤형 평가 분석 엔진
-            </h3>
-            <p className="text-white/50 font-medium text-sm leading-relaxed">
-              업로드한 문항을 정밀 분석하여 학생의 수준에 맞는 수학 문항을 자동 출제하고, 
-              학생의 미개념/오개념 요소를 심층 진단해주는 리포트를 제공합니다.
-            </p>
-          </div>
-          <button 
-            onClick={() => navigate('/join')}
-            className="bg-white/10 hover:bg-white/15 text-white border border-white/10 px-8 py-4 rounded-2xl font-extrabold transition-all shadow-xl uppercase text-xs tracking-wider shrink-0"
-          >
-            학생 참여 화면 체험하기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon: Icon, color, description }: { title: string, value: string | number, icon: any, color: string, description: string }) {
-  const colorGlows: Record<string, string> = {
-    indigo: "from-indigo-500 to-blue-500 text-white glow-blue shadow-indigo-500/10",
-    purple: "from-purple-500 to-pink-500 text-white glow-purple shadow-purple-500/10",
-    emerald: "from-emerald-400 to-teal-500 text-white glow-green shadow-emerald-500/10",
+  // Fetch Rooms
+  const fetchRoomsData = async () => {
+    setRefreshing(true);
+    try {
+      const q = query(collection(db, 'rooms'));
+      const snap = await getDocs(q);
+      const roomsList: Room[] = [];
+      const foldersList = new Set<string>(['기본 수업']);
+      
+      snap.forEach(doc => {
+        const r = { id: doc.id, ...doc.data() } as Room;
+        roomsList.push(r);
+        if (r.folder_name) {
+          foldersList.add(r.folder_name);
+        }
+      });
+      
+      setRooms(roomsList);
+      setFolders(Array.from(foldersList));
+      
+      // Auto select first room if none selected
+      if (roomsList.length > 0 && !selectedRoom) {
+        const filtered = roomsList.filter(r => (r.folder_name || '기본 수업') === selectedFolder);
+        if (filtered.length > 0) {
+          setSelectedRoom(filtered[0]);
+        } else {
+          setSelectedRoom(roomsList[0]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  return (
-    <div className="ios-glass-interactive rounded-[28px] p-6.5 flex flex-col border border-white/5 shadow-xl relative overflow-hidden group">
-      {/* Sleek top glow accent */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+  useEffect(() => {
+    fetchRoomsData();
+  }, []);
+
+  // Fetch Submissions (Students) for the selected Room
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      if (!selectedRoom) {
+        setSubmissions([]);
+        setSelectedSubmission(null);
+        return;
+      }
       
-      <div className="flex items-center justify-between mb-5">
-        <div className={cn(
-          "w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br border border-white/10",
-          colorGlows[color] || "from-slate-700 to-slate-800 text-white"
-        )}>
-          <Icon size={22} strokeWidth={2.5} />
-        </div>
-        <span className="text-[10px] font-extrabold text-white/30 uppercase tracking-widest">{title}</span>
+      try {
+        const q = query(
+          collection(db, 'submissions'),
+          where('room_code', '==', selectedRoom.room_code)
+        );
+        const snap = await getDocs(q);
+        const subList: StudentSubmission[] = [];
+        
+        snap.forEach(doc => {
+          subList.push({ id: doc.id, ...doc.data() } as StudentSubmission);
+        });
+        
+        setSubmissions(subList);
+        
+        if (subList.length > 0) {
+          setSelectedSubmission(subList[0]);
+        } else {
+          setSelectedSubmission(null);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    
+    fetchSubmissions();
+  }, [selectedRoom]);
+
+  // Folder creation handler
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+    setFolders(prev => [...prev, newFolderName.trim()]);
+    setSelectedFolder(newFolderName.trim());
+    setNewFolderName('');
+    setShowFolderModal(false);
+  };
+
+  // PDF Generation / Print layout trigger
+  const handlePrintPDF = () => {
+    if (!selectedSubmission || !selectedRoom) return;
+
+    // Create a temporary beautiful print window styled exactly like A4 sheet
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const chatHtml = selectedSubmission.chat_history.map(m => `
+      <div style="margin-bottom: 20px; padding: 15px; border-radius: 12px; background: ${m.role === 'student' ? '#f0f0f0' : '#f9f9f9'}; border: 1px solid #e0e0e0;">
+        <strong style="color: ${m.role === 'student' ? '#111' : '#ff6b00'}">${m.role === 'student' ? '학생' : 'Jam봇 (AI)'}</strong>
+        <p style="margin: 5px 0 0 0; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${m.content}</p>
+        ${m.internal_analysis ? `
+          <div style="margin-top: 8px; font-size: 11px; color: #888; border-top: 1px dashed #ddd; padding-top: 5px;">
+            🔍 Jam봇 내부 분석: ${m.internal_analysis}
+          </div>
+        ` : ''}
       </div>
-      
-      <div className="space-y-1">
-        <p className="text-4xl font-extrabold text-white tracking-tight">{value}</p>
-        <p className="text-[11px] text-white/40 font-semibold tracking-tight">{description}</p>
-      </div>
+    `).join('');
+
+    const editorHtml = readOnlyEditor?.getHTML() || '<p>작성된 노트가 없습니다.</p>';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>JamClass 복습 보고서 - ${selectedSubmission.student_name}</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              color: #333;
+              margin: 40px;
+              line-height: 1.6;
+            }
+            .header {
+              border-bottom: 2px solid #ff6b00;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin-bottom: 30px;
+              background: #fdfdfd;
+              border: 1px solid #eee;
+              padding: 15px;
+              border-radius: 8px;
+            }
+            .section-title {
+              font-size: 18px;
+              font-weight: 800;
+              color: #ff6b00;
+              border-left: 4px solid #ff6b00;
+              padding-left: 10px;
+              margin-top: 40px;
+              margin-bottom: 20px;
+            }
+            .editor-content {
+              border: 1px solid #eee;
+              padding: 20px;
+              border-radius: 8px;
+              background: #fafafa;
+            }
+            @media print {
+              body { margin: 20px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 style="margin: 0; color: #ff6b00;">JamClass 배움 성장 보고서</h1>
+            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">인공지능 소크라테스 대화를 통한 메타인지 성장 분석</p>
+          </div>
+          <div class="meta-grid">
+            <div><strong>학생 이름:</strong> ${selectedSubmission.student_name}</div>
+            <div><strong>수업방 코드:</strong> ${selectedRoom.room_code}</div>
+            <div><strong>수업 주제:</strong> ${selectedRoom.title}</div>
+            <div><strong>대화 단계:</strong> ${selectedSubmission.current_phase === 'COMPLETE' ? '복습 완료 🎉' : selectedSubmission.current_phase}</div>
+          </div>
+          
+          <div class="section-title">학생 복습 노트 (Tiptap Workspace)</div>
+          <div class="editor-content">
+            ${editorHtml}
+          </div>
+          
+          <div class="section-title">잼봇(AI) Socratic 대화 로그</div>
+          <div>
+            ${chatHtml}
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const activeRooms = rooms.filter(r => (r.folder_name || '기본 수업') === selectedFolder);
+
+  if (loading) return (
+    <div className="h-screen ios-wallpaper flex items-center justify-center font-sans text-white">
+       <div className="flex flex-col items-center gap-6">
+          <RefreshCw className="animate-spin text-orange-400" size={64} strokeWidth={2.5} />
+          <p className="text-white/40 font-extrabold uppercase tracking-widest text-[10px]">Loading Instructor Console...</p>
+       </div>
     </div>
   );
-}
 
-function QuizCard({ quiz, index }: { quiz: Quiz, index: number }) {
-  const navigate = useNavigate();
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, cubicBezier: [0.16, 1, 0.3, 1] }}
-      onClick={() => navigate(`/report/${quiz.id}`)}
-      className="ios-glass-interactive rounded-[28px] p-6 border border-white/5 shadow-lg flex justify-between items-center group relative overflow-hidden cursor-pointer"
-    >
-      <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <div className="h-full flex flex-col font-sans text-white overflow-hidden p-6 gap-6">
       
-      <div className="relative z-10 flex-1 min-w-0 pr-4">
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className={cn(
-            "px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border",
-            quiz.status === 'published' 
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
-              : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-          )}>
-            {quiz.status === 'published' ? "Published" : "Draft"}
-          </span>
-          <span className="text-[9px] font-semibold text-white/40 uppercase">
-            {new Date(quiz.created_at).toLocaleDateString()}
-          </span>
-        </div>
+      {/* 1. Header Toolbar */}
+      <header className="ios-glass rounded-[28px] h-20 px-8 flex items-center justify-between shrink-0 shadow-2xl relative border border-white/5">
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         
-        <h3 className="text-lg font-extrabold text-white group-hover:text-indigo-400 transition-colors tracking-tight leading-snug mb-4.5 truncate">
-          {quiz.title}
-        </h3>
-        
-        <div className="flex items-center gap-4 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-white/40">
-            <FileText size={13} strokeWidth={2.5} /> {quiz.questions.length} Questions
-          </span>
-          <span className="flex items-center gap-2 text-indigo-300 bg-indigo-500/15 border border-indigo-500/20 px-3 py-1 rounded-xl font-mono uppercase tracking-widest text-[10px]">
-            {quiz.invite_code}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-rose-500 rounded-xl flex items-center justify-center font-black shadow-lg shadow-orange-500/10">
+            📊
+          </div>
+          <div>
+            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none mb-0.5">교사용 모니터링</p>
+            <h1 className="text-sm font-black text-white leading-none">JamClass 대시보드</h1>
+          </div>
         </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={fetchRoomsData}
+            className="p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 text-white/70 hover:text-white transition-all"
+          >
+            <RefreshCw size={16} />
+          </button>
+          
+          <button 
+            onClick={() => navigate('/create')}
+            className="px-5 h-12 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-orange-500/25 transition-all flex items-center gap-2 glow-orange"
+          >
+            <Plus size={16} strokeWidth={3} /> 수업 개설하기
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Core Dashboard Split View */}
+      <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
+        
+        {/* A. Left Sidebar: Folder / Rooms / Students (Width: 320px) */}
+        <aside className="w-80 flex flex-col gap-6 shrink-0 min-h-0">
+          
+          {/* Folders & Rooms list */}
+          <div className="ios-glass border border-white/5 rounded-[32px] p-5 flex flex-col gap-4 max-h-[45%] overflow-hidden">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">수업 폴더</span>
+              <button 
+                onClick={() => setShowFolderModal(true)}
+                className="p-1.5 hover:bg-white/5 rounded-lg text-orange-400 transition-all"
+              >
+                <FolderPlus size={16} />
+              </button>
+            </div>
+            
+            {/* Folder Tabs */}
+            <div className="flex gap-1 overflow-x-auto pb-1 shrink-0 scrollbar-none">
+              {folders.map(f => (
+                <button
+                  key={f}
+                  onClick={() => {
+                    setSelectedFolder(f);
+                    const filtered = rooms.filter(r => (r.folder_name || '기본 수업') === f);
+                    if (filtered.length > 0) setSelectedRoom(filtered[0]);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all border",
+                    selectedFolder === f 
+                      ? "bg-white/10 border-white/10 text-white" 
+                      : "border-transparent text-white/45 hover:text-white"
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            {/* Room List inside folder */}
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {activeRooms.length === 0 ? (
+                <p className="text-[11px] text-white/30 text-center py-6">개설된 수업방이 없습니다.</p>
+              ) : (
+                activeRooms.map(room => (
+                  <button
+                    key={room.id}
+                    onClick={() => setSelectedRoom(room)}
+                    className={cn(
+                      "w-full text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-1",
+                      selectedRoom?.id === room.id 
+                        ? "bg-white/8 border-white/10" 
+                        : "bg-transparent border-transparent hover:bg-white/3 text-white/60 hover:text-white"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black truncate">{room.title}</span>
+                      <span className="text-[9px] font-black px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded-md border border-orange-500/10">
+                        {room.room_code}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-white/30 font-bold">
+                      {new Date(room.created_at).toLocaleDateString()} 개설
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Student Submissions List in selected room */}
+          <div className="ios-glass border border-white/5 rounded-[32px] p-5 flex flex-col gap-4 flex-1 min-h-0">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">참여 학생 명단</span>
+            
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {submissions.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-white/20">
+                  <Users size={20} className="mb-2" />
+                  <p className="text-[11px]">아직 접속한 학생이 없습니다.</p>
+                </div>
+              ) : (
+                submissions.map(sub => {
+                  const isComplete = sub.current_phase === 'COMPLETE';
+                  return (
+                    <button
+                      key={sub.id}
+                      onClick={() => setSelectedSubmission(sub)}
+                      className={cn(
+                        "w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between",
+                        selectedSubmission?.id === sub.id 
+                          ? "bg-white/8 border-white/10" 
+                          : "bg-transparent border-transparent hover:bg-white/3 text-white/60 hover:text-white"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-bold text-xs">
+                          {sub.student_name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold leading-none mb-1 text-white">{sub.student_name}</p>
+                          <p className="text-[9px] text-white/40 leading-none">
+                            {sub.chat_history?.length || 0}차 대화
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {isComplete ? (
+                          <span className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/15 rounded-lg text-[9px] font-bold text-emerald-400">
+                            <CheckCircle size={8} /> 완료
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/15 rounded-lg text-[9px] font-bold text-amber-400">
+                            <Clock size={8} /> 진행중
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* B. Main workspace: Student Details View (Left Note read-only, Right Chat read-only) */}
+        <section className="flex-1 flex flex-col gap-6 min-h-0">
+          
+          {selectedSubmission ? (
+            <>
+              {/* Toolbar of Selected Student */}
+              <div className="ios-glass rounded-[24px] px-6 py-4 flex items-center justify-between border border-white/5 shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-black">{selectedSubmission.student_name} 학생의 배움 흔적</span>
+                  <span className={cn(
+                    "px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase",
+                    selectedSubmission.current_phase === 'COMPLETE' ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/10" : "bg-orange-500/20 text-orange-300 border border-orange-500/10"
+                  )}>
+                    {selectedSubmission.current_phase === 'COMPLETE' ? '소크라테스 대화 완료' : `${selectedSubmission.chat_history?.length || 0}차 대화 피드백 진행 중`}
+                  </span>
+                </div>
+                
+                <button 
+                  onClick={handlePrintPDF}
+                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all border border-white/5"
+                >
+                  <Download size={14} /> PDF 다운로드
+                </button>
+              </div>
+
+              {/* Dual-Pane View */}
+              <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
+                {/* Left Note Render Area */}
+                <div className="flex-1 ios-glass rounded-[32px] p-6 lg:p-8 flex flex-col overflow-hidden relative border border-white/5">
+                  <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4 block">학생 복습 노트 (Read-only)</span>
+                  
+                  <div className="flex-1 bg-white/2 border border-white/5 rounded-3xl p-6 overflow-y-auto mb-2 text-white/80 prose prose-invert max-w-none focus:outline-none tiptap-editor-styles">
+                    <EditorContent editor={readOnlyEditor} />
+                  </div>
+                </div>
+
+                {/* Right Chat & Analysis Area */}
+                <div className="flex-1 ios-glass rounded-[32px] flex flex-col overflow-hidden relative border border-white/5">
+                  <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                  
+                  <div className="px-6 py-4 border-b border-white/5 bg-white/2 flex items-center justify-between shrink-0">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">잼봇 & 학생 실시간 대화 모니터</span>
+                  </div>
+
+                  <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                    {selectedSubmission.chat_history?.length === 0 ? (
+                      <p className="text-xs text-white/35 text-center py-12">나눈 대화가 없습니다.</p>
+                    ) : (
+                      selectedSubmission.chat_history.map((m, idx) => {
+                        const isBot = m.role === 'jambot';
+                        return (
+                          <div key={idx} className="space-y-2">
+                            {/* Teacher-only grey hint block showing internal analysis */}
+                            {isBot && m.internal_analysis && (
+                              <div className="flex justify-start pl-11">
+                                <div className="p-3 bg-white/3 border border-dashed border-white/10 rounded-2xl text-[11px] text-white/45 max-w-[85%] leading-relaxed">
+                                  <strong className="text-[9px] uppercase tracking-wider text-orange-400/80 block mb-1">🔍 Jam봇 내부 추론 프로세스</strong>
+                                  {m.internal_analysis}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className={cn("flex gap-3", isBot ? "justify-start" : "justify-end")}>
+                              {isBot && (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 flex items-center justify-center text-xs font-black shrink-0">
+                                  🤖
+                                </div>
+                              )}
+                              
+                              <div className={cn(
+                                "p-4 rounded-[20px] max-w-[80%] text-xs font-medium leading-relaxed",
+                                isBot 
+                                  ? "bg-white/6 border border-white/8 text-white rounded-tl-[4px]" 
+                                  : "bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-tr-[4px]"
+                              )}>
+                                <p className="whitespace-pre-wrap">{m.content}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 ios-glass rounded-[32px] flex flex-col items-center justify-center text-center p-8 text-white/20 border border-white/5 shadow-2xl">
+              <Users size={48} className="mb-4 text-white/10" />
+              <h3 className="text-lg font-black text-white/30">참여 학생 분석 대기 중</h3>
+              <p className="text-xs max-w-sm leading-relaxed mt-2 text-white/20">
+                수업 초대 코드(예: <strong>{selectedRoom?.room_code}</strong>)로 학생들이 로그인하여 노트를 작성하고 잼봇에게 제출하면 분석 데이터가 실시간 업로드됩니다!
+              </p>
+            </div>
+          )}
+
+        </section>
       </div>
-      
-      <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shrink-0 shadow-sm text-white/40">
-        <ChevronRight size={18} strokeWidth={3} className="group-hover:translate-x-0.5 transition-transform duration-300" />
-      </div>
-    </motion.div>
+
+      {/* Folder Creation Modal */}
+      <AnimatePresence>
+        {showFolderModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+            <motion.form 
+              onSubmit={handleCreateFolder}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md ios-glass rounded-[32px] p-8 border border-white/10 shadow-2xl space-y-6 text-white"
+            >
+              <h3 className="text-lg font-black">새 폴더 생성</h3>
+              
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">폴더명</label>
+                <input 
+                  type="text" 
+                  placeholder="예: 5학년 과학 복습"
+                  value={newFolderName}
+                  onChange={e => setNewFolderName(e.target.value)}
+                  className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:bg-white/10 focus:border-orange-500/40 outline-none transition-all"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowFolderModal(false)}
+                  className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold tracking-widest text-white/60 hover:text-white transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl"
+                >
+                  생성하기
+                </button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 }

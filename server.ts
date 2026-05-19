@@ -20,6 +20,7 @@ const ai = new GoogleGenAI({
   }
 });
 
+// Extremely robust model choice & fallback retry mechanism (gemini-2.0-flash, gemini-1.5-flash)
 async function generateContentWithFallback(config: {
   contents: any;
   config?: any;
@@ -60,220 +61,145 @@ async function generateContentWithFallback(config: {
   throw lastError;
 }
 
-// AI Routes
-app.post("/api/quiz/analyze", async (req, res) => {
-  try {
-    const { content, type } = req.body; // content is base64 for pdf/image, text for text
-    
-    let parts: any[] = [];
-    if (type === 'text') {
-      parts.push({ text: content });
-    } else {
-      parts.push({
-        inlineData: {
-          mimeType: type === 'pdf' ? 'application/pdf' : 'image/jpeg',
-          data: content
-        }
-      });
-    }
+const JAMBOT_SYSTEM_INSTRUCTION = `
+# Role & Persona
+- 당신은 초등학교 3~6학년 학생들의 메타인지를 깨우는 친절하고 위트 있는 AI 튜터 'Jam봇(잼봇)'입니다.
+- 친근한 초등학생 눈높이 톤앤매너를 유지하세요. 해요체를 사용하고, 칭찬을 아끼지 않으며, 이모지(🚀, ✨, 🤔, 💡 등)를 적극적으로 활용하세요.
 
-    parts.push({ text: `
-      Analyze this math material and provide the following information in JSON format:
-      - expected_grade: number
-      - unit: string
-      - key_concepts: string[]
-      - original_difficulty: string (상/중/하)
-      - common_misconceptions: string[]
-      - recommended_level: string (상/중/하)
-      - possible_question_types: string[]
-    `});
+# Input Data Context
+- 프론트엔드의 Tiptap 에디터로부터 정형화된 문서 데이터(JSON)가 전달됩니다.
+- 당신은 heading, paragraph, image 등의 블록 구조를 이해하고, 학생이 강조한 부분(heading)과 작성한 본문 내용을 기반으로 학습 상태를 정확히 파악해야 합니다.
+
+# Core Logic (소크라테스 문답법 & 일상 전이 3단계)
+대화의 흐름은 학생과의 Chat History(이전 대화록)를 기반으로 아래 3단계를 엄격히 준수합니다.
+
+- 1단계 [개념 확인 (UNDERSTANDING_CHECK)]:
+  * 학생의 Tiptap 노트에서 오개념이 있거나 설명이 부족한 부분을 찾습니다.
+  * 정답을 절대 직접 말하지 말고, 학생이 스스로 깨달을 수 있는 유도 질문을 단 '하나'만 던지세요.
+- 2단계 [심화 질문 (DEEPENING)]:
+  * 대화 기록을 보니 학생이 개념을 잘 이해한 것 같다면, 개념을 한 단계 더 깊게 생각해보는 질문을 던집니다. (최대 2회까지만 토크 유지)
+- 3단계 [일상 전이 (REAL_WORLD_TRANSFER)]:
+  * 학생이 개념을 완전히 이해했다고 판단되면, "우리가 오늘 배운 [개념]을 우리 동네/우리 학교/일상생활에서 일어나는 [특정 문제 상황]에 어떻게 적용할 수 있을까?"라는 질문을 던져 대화를 마무리 단계로 이끕니다.
+
+# Guardrails (절대 규칙)
+1. 한 번의 답변에 질문은 무조건 '하나'만 하세요. 질문이 많으면 초등학생은 쉽게 지칩니다.
+2. 학생이 모른다고 하거나 오답을 말해도 정답을 스포일러하지 마세요. 힌트를 주거나, "그렇게 생각한 이유는 뭐야?"라고 되물으세요.
+3. 출력은 반드시 약속된 JSON Schema 형태만 반환해야 합니다. 다른 부가적인 텍스트는 절대 출력하지 마세요.
+`;
+
+// AI Endpoint: /api/chat
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { tiptapJson, chatHistory } = req.body;
+
+    const formattedTiptap = typeof tiptapJson === 'string' 
+      ? tiptapJson 
+      : JSON.stringify(tiptapJson, null, 2);
+
+    // Format chat history for Gemini context
+    const chatHistoryText = chatHistory && chatHistory.length > 0
+      ? chatHistory.map((m: any) => `${m.role === 'student' ? '학생 (Student)' : 'Jam봇 (AI)'}: ${m.content}`).join("\n")
+      : "이전 대화 기록 없음 (첫 대화 시작)";
+
+    const promptText = `
+학생의 Tiptap 에디터 작성 데이터 (JSON):
+${formattedTiptap}
+
+학생과의 이전 대화 기록 (Chat History):
+${chatHistoryText}
+
+위 자료와 대화 기록을 면밀히 분석하여, [소크라테스 문답법 & 일상 전이 3단계] 중 현재 단계에 부합하는 피드백과 질문을 다음 스키마에 맞추어 출력하세요.
+`;
 
     const result = await generateContentWithFallback({
-      contents: { parts },
+      contents: promptText,
       config: {
+        systemInstruction: JAMBOT_SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            expected_grade: { type: Type.NUMBER },
-            unit: { type: Type.STRING },
-            key_concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-            original_difficulty: { type: Type.STRING },
-            common_misconceptions: { type: Type.ARRAY, items: { type: Type.STRING } },
-            recommended_level: { type: Type.STRING },
-            possible_question_types: { type: Type.ARRAY, items: { type: Type.STRING } }
-          }
-        }
-      }
-    });
-
-    const text = result.text;
-    if (!text) throw new Error("AI returned an empty response");
-    
-    // Sometimes the model might still wrap in markdown despite responseMimeType
-    const cleanJson = text.replace(/^```json\n?|\n?```$/g, "").trim();
-    res.json(JSON.parse(cleanJson));
-  } catch (error: any) {
-    console.error("Analysis Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/quiz/generate", async (req, res) => {
-  try {
-    const { 
-      sourceContent, 
-      sourceType,
-      studentLevel, 
-      questionCount, 
-      useMathSymbols, 
-      includeRealLife,
-      includeExplanations
-    } = req.body;
-
-    let parts: any[] = [];
-    if (sourceType === 'text') {
-      parts.push({ text: sourceContent });
-    } else {
-      parts.push({
-        inlineData: {
-          mimeType: sourceType === 'pdf' ? 'application/pdf' : 'image/jpeg',
-          data: sourceContent
-        }
-      });
-    }
-
-    parts.push({ text: `
-      Generate a comprehensive math question set based on the provided material.
-      
-      CRITICAL DIFFICULTY REQUIREMENT:
-      - You MUST generate exactly ${questionCount} questions for "하" (Easy) difficulty level.
-      - You MUST generate exactly ${questionCount} questions for "중" (Medium) difficulty level.
-      - You MUST generate exactly ${questionCount} questions for "상" (Hard) difficulty level.
-      - Therefore, the total number of generated questions MUST be exactly ${questionCount * 3} questions!
-      - Label the difficulty of each question accurately as "하", "중", or "상" in the JSON response.
-      
-      Settings:
-      - Use LaTeX for math symbols: ${useMathSymbols}
-      - Include real-life problems: ${includeRealLife}
-      
-      For each question, provide:
-      - question: string (using LaTeX if requested)
-      - options: string[] (exactly 4 options)
-      - answer: number (0-3 index)
-      - explanation: string
-      - misconception_points: string (what to look for if wrong)
-      - difficulty: string (must be one of: "상", "중", "하")
-      - depth_of_knowledge: string (사고 수준)
-    `});
-
-    const result = await generateContentWithFallback({
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              question: { type: Type.STRING },
-              options: { type: Type.ARRAY, items: { type: Type.STRING } },
-              answer: { type: Type.NUMBER },
-              explanation: { type: Type.STRING },
-              misconception_points: { type: Type.STRING },
-              difficulty: { type: Type.STRING },
-              depth_of_knowledge: { type: Type.STRING }
+            internal_analysis: { 
+              type: Type.STRING,
+              description: "AI가 내부적으로 판단하는 분석 공간. 현재 대화 단계 분석, 학생의 오개념 유무, 다음에 던질 질문의 의도를 논리적으로 서술."
             },
-            required: ["question", "options", "answer", "explanation"]
-          }
+            current_phase: { 
+              type: Type.STRING, 
+              enum: ["UNDERSTANDING_CHECK", "DEEPENING", "REAL_WORLD_TRANSFER", "COMPLETE"],
+              description: "현재 대화가 어떤 단계인지 표시."
+            },
+            praise_message: { 
+              type: Type.STRING,
+              description: "학생이 작성한 노트나 직전 답변에 대해 칭찬하고 공감해주는 따뜻한 한 문장의 격려."
+            },
+            socratic_question: { 
+              type: Type.STRING,
+              description: "학생에게 실제로 던질 소크라테스식 유도 질문 또는 일상 전이 질문 (단 한 개만 작성)."
+            }
+          },
+          required: ["internal_analysis", "current_phase", "praise_message", "socratic_question"]
         }
       }
     });
 
-    const text = result.text;
-    if (!text) throw new Error("AI returned an empty response");
-    
-    const cleanJson = text.replace(/^```json\n?|\n?```$/g, "").trim();
+    const responseText = result.text;
+    if (!responseText) {
+      throw new Error("AI returned empty response");
+    }
+
+    const cleanJson = responseText.replace(/^```json\n?|\n?```$/g, "").trim();
     res.json(JSON.parse(cleanJson));
   } catch (error: any) {
-    console.error("Generation Error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("AI Chat Error:", error);
+    res.status(500).json({ error: error.message || "AI Chat failed" });
   }
 });
 
-app.post("/api/quiz/evaluate", async (req, res) => {
-  try {
-    const { questions, studentAnswers, studentName } = req.body;
-
-    const prompt = `
-      Evaluate the student's quiz results.
-      Questions and correct answers: ${JSON.stringify(questions)}
-      Student's answers: ${JSON.stringify(studentAnswers)}
-      
-      Provide a detailed analysis in JSON:
-      - score: number
-      - total_questions: number
-      - accuracy: number
-      - student_level: string (current level based on performance)
-      - incorrect_questions: number[] (indices)
-      - misconception_types: string[]
-      - missing_concepts: string[]
-      - recommended_next_level: string
-      - strengths: string
-      - weaknesses: string
-    `;
-
-    const result = await generateContentWithFallback({
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            score: { type: Type.NUMBER },
-            total_questions: { type: Type.NUMBER },
-            accuracy: { type: Type.NUMBER },
-            student_level: { type: Type.STRING },
-            incorrect_questions: { type: Type.ARRAY, items: { type: Type.NUMBER } },
-            misconception_types: { type: Type.ARRAY, items: { type: Type.STRING } },
-            missing_concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-            recommended_next_level: { type: Type.STRING },
-            strengths: { type: Type.STRING },
-            weaknesses: { type: Type.STRING }
-          }
-        }
-      }
-    });
-
-    const text = result.text;
-    if (!text) throw new Error("AI returned an empty response");
-    
-    const cleanJson = text.replace(/^```json\n?|\n?```$/g, "").trim();
-    res.json(JSON.parse(cleanJson));
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Vite middleware for development
+// Serve frontend in production, or mount Vite Dev Server in development
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const isProd = process.env.NODE_ENV === "production";
+  
+  if (!isProd) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "custom",
     });
+    
     app.use(vite.middlewares);
+    
+    app.use("*", async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        let template = await vite.transformIndexHtml(
+          url,
+          `<!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>JamClass - AI 피드백 노트</title>
+              <link rel="stylesheet" href="/src/index.css">
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.tsx"></script>
+            </body>
+          </html>`
+        );
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.use(express.static(path.join(__dirname, "../dist")));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "../dist/index.html"));
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  
+  app.listen(PORT, () => {
+    console.log(`[JamClass Server] Running at http://localhost:${PORT}`);
   });
 }
 
