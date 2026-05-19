@@ -5,8 +5,8 @@ import {
   Sparkles, Loader2, ArrowLeft, Plus, CheckCircle, 
   Copy, Folder, BookOpen, Presentation, UserCheck, AlertCircle 
 } from 'lucide-react';
-import { collection, addDoc, getDocs, query } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { addRoomHelper, getRoomsHelper, isLocalStorageOnly } from '../lib/dbHelper';
+import { auth } from '../lib/firebase';
 import { cn } from '../lib/utils';
 
 export default function QuizCreator() {
@@ -25,12 +25,11 @@ export default function QuizCreator() {
   useEffect(() => {
     const fetchFolders = async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'rooms')));
+        const roomsList = await getRoomsHelper();
         const folderSet = new Set<string>(['기본 수업']);
-        snap.forEach(doc => {
-          const data = doc.data();
-          if (data.folder_name) {
-            folderSet.add(data.folder_name);
+        roomsList.forEach(room => {
+          if (room.folder_name) {
+            folderSet.add(room.folder_name);
           }
         });
         setFolders(Array.from(folderSet));
@@ -58,7 +57,7 @@ export default function QuizCreator() {
     const code = generateInviteCode();
     
     try {
-      await addDoc(collection(db, 'rooms'), {
+      await addRoomHelper({
         title: title.trim(),
         room_code: code,
         folder_name: selectedFolder,
@@ -102,6 +101,13 @@ export default function QuizCreator() {
         >
           <ArrowLeft size={14} /> 모니터링판으로 돌아가기
         </button>
+
+        {isLocalStorageOnly() && (
+          <div className="ios-glass rounded-[20px] p-4 mb-6 border border-amber-500/25 bg-amber-500/10 text-xs font-semibold text-amber-300 flex items-center gap-3">
+            <AlertCircle size={16} strokeWidth={2.5} className="text-amber-400" />
+            <span>파이어베이스 권한 제한으로 인해 <strong>'로컬 브라우저 저장소 모드'</strong>로 자동 전환되었습니다. 교사-학생 복습 및 잼봇 피드백 기능은 동일하게 정상 작동합니다! 🚀</span>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {!createdRoom ? (

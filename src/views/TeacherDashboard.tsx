@@ -6,8 +6,8 @@ import {
   ChevronRight, Calendar, User, FileText, Download, CheckCircle, 
   Clock, AlertCircle, RefreshCw, LogOut, Code
 } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { getRoomsHelper, getSubmissionsHelper, isLocalStorageOnly } from '../lib/dbHelper';
+import { auth } from '../lib/firebase';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -58,14 +58,10 @@ export default function TeacherDashboard() {
   const fetchRoomsData = async () => {
     setRefreshing(true);
     try {
-      const q = query(collection(db, 'rooms'));
-      const snap = await getDocs(q);
-      const roomsList: Room[] = [];
+      const roomsList = await getRoomsHelper();
       const foldersList = new Set<string>(['기본 수업']);
       
-      snap.forEach(doc => {
-        const r = { id: doc.id, ...doc.data() } as Room;
-        roomsList.push(r);
+      roomsList.forEach(r => {
         if (r.folder_name) {
           foldersList.add(r.folder_name);
         }
@@ -105,17 +101,7 @@ export default function TeacherDashboard() {
       }
       
       try {
-        const q = query(
-          collection(db, 'submissions'),
-          where('room_code', '==', selectedRoom.room_code)
-        );
-        const snap = await getDocs(q);
-        const subList: StudentSubmission[] = [];
-        
-        snap.forEach(doc => {
-          subList.push({ id: doc.id, ...doc.data() } as StudentSubmission);
-        });
-        
+        const subList = await getSubmissionsHelper(selectedRoom.room_code);
         setSubmissions(subList);
         
         if (subList.length > 0) {
@@ -287,6 +273,14 @@ export default function TeacherDashboard() {
           </button>
         </div>
       </header>
+
+      {/* Local Storage Fallback Toast */}
+      {isLocalStorageOnly() && (
+        <div className="ios-glass rounded-[20px] p-4 border border-amber-500/25 bg-amber-500/10 text-xs font-semibold text-amber-300 flex items-center gap-3 shrink-0">
+          <AlertCircle size={16} strokeWidth={2.5} className="text-amber-400" />
+          <span>파이어베이스 권한 제한으로 인해 <strong>'로컬 브라우저 저장소 모드'</strong>로 자동 전환되었습니다. 교사-학생 복습 및 잼봇 피드백 기능은 동일하게 정상 작동합니다! 🚀</span>
+        </div>
+      )}
 
       {/* 2. Core Dashboard Split View */}
       <div className="flex-1 flex gap-6 overflow-hidden min-h-0">

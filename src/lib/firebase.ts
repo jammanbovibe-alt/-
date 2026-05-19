@@ -9,8 +9,12 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export const initAuth = async () => {
-  if (!auth.currentUser) {
-    await signInAnonymously(auth);
+  try {
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
+  } catch (err) {
+    console.warn("Firebase Anonymous Auth is disabled on the console. Using LocalStorage fallback database mode.", err);
   }
 };
 

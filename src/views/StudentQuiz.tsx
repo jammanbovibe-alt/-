@@ -5,8 +5,7 @@ import {
   Send, Loader2, Sparkles, AlertCircle, BookOpen, ChevronRight, 
   Bold, Italic, Heading1, Heading2, Heading3, List, ImageIcon, Link as LinkIcon, CheckCircle2 
 } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { findRoomByCodeHelper, getSubmissionHelper, saveSubmissionHelper } from '../lib/dbHelper';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -52,30 +51,21 @@ export default function StudentQuiz() {
         if (!inviteCode) return;
         
         // Fetch Room Title
-        const roomQ = query(collection(db, 'rooms'), where('room_code', '==', inviteCode.toUpperCase()));
-        const roomSnap = await getDocs(roomQ);
-        if (!roomSnap.empty) {
-          setRoomTitle(roomSnap.docs[0].data().title);
+        const room = await findRoomByCodeHelper(inviteCode);
+        if (room) {
+          setRoomTitle(room.title);
         }
 
         // Fetch Submission
-        const subQ = query(
-          collection(db, 'submissions'),
-          where('room_code', '==', inviteCode.toUpperCase()),
-          where('student_name', '==', studentName)
-        );
-        const subSnap = await getDocs(subQ);
-        
-        if (!subSnap.empty) {
-          const subDoc = subSnap.docs[0];
-          setSubmissionId(subDoc.id);
-          const subData = subDoc.data() as StudentSubmission;
-          setMessages(subData.chat_history || []);
-          setCurrentPhase(subData.current_phase || 'UNDERSTANDING_CHECK');
+        const existingSub = await getSubmissionHelper(inviteCode, studentName);
+        if (existingSub) {
+          setSubmissionId(existingSub.id);
+          setMessages(existingSub.chat_history || []);
+          setCurrentPhase(existingSub.current_phase || 'UNDERSTANDING_CHECK');
           
-          if (editor && subData.tiptap_json) {
+          if (editor && existingSub.tiptap_json) {
             try {
-              editor.commands.setContent(JSON.parse(subData.tiptap_json));
+              editor.commands.setContent(JSON.parse(existingSub.tiptap_json));
             } catch (err) {
               console.error("Failed to parse editor JSON content:", err);
             }
@@ -148,30 +138,17 @@ export default function StudentQuiz() {
       setMessages(updatedMessages);
       setCurrentPhase(aiData.current_phase);
 
-      // Save to Firebase
-      if (submissionId) {
-        // Update existing
-        await updateDoc(doc(db, 'submissions', submissionId), {
-          tiptap_json: tiptapJsonStr,
-          chat_history: updatedMessages,
-          current_phase: aiData.current_phase,
-          status: aiData.current_phase === 'COMPLETE' ? '완료' : '진행중',
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        // Create new submission doc
-        const newDocRef = await addDoc(collection(db, 'submissions'), {
-          room_code: inviteCode?.toUpperCase(),
-          student_name: studentName,
-          tiptap_json: tiptapJsonStr,
-          chat_history: updatedMessages,
-          current_phase: aiData.current_phase,
-          status: aiData.current_phase === 'COMPLETE' ? '완료' : '진행중',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        setSubmissionId(newDocRef.id);
-      }
+      // Save to Database
+      const savedId = await saveSubmissionHelper(submissionId, {
+        room_code: inviteCode?.toUpperCase() || '',
+        student_name: studentName,
+        tiptap_json: tiptapJsonStr,
+        chat_history: updatedMessages,
+        current_phase: aiData.current_phase,
+        status: aiData.current_phase === 'COMPLETE' ? '완료' : '진행중',
+        updated_at: new Date().toISOString()
+      });
+      setSubmissionId(savedId);
     } catch (e: any) {
       console.error(e);
       alert(e.message || '노트 전송에 실패했습니다.');
@@ -199,10 +176,14 @@ export default function StudentQuiz() {
     setMessages(intermediateMessages);
 
     try {
-      // Promptly save student's intermediate response to Firestore
+      // Promptly save student's intermediate response to Database
       if (submissionId) {
-        await updateDoc(doc(db, 'submissions', submissionId), {
+        await saveSubmissionHelper(submissionId, {
+          room_code: inviteCode?.toUpperCase() || '',
+          student_name: studentName,
+          tiptap_json: JSON.stringify(editor.getJSON()),
           chat_history: intermediateMessages,
+          current_phase: currentPhase,
           status: '진행중',
           updated_at: new Date().toISOString()
         });
@@ -235,7 +216,10 @@ export default function StudentQuiz() {
       setCurrentPhase(aiData.current_phase);
 
       if (submissionId) {
-        await updateDoc(doc(db, 'submissions', submissionId), {
+        await saveSubmissionHelper(submissionId, {
+          room_code: inviteCode?.toUpperCase() || '',
+          student_name: studentName,
+          tiptap_json: JSON.stringify(editor.getJSON()),
           chat_history: finalMessages,
           current_phase: aiData.current_phase,
           status: aiData.current_phase === 'COMPLETE' ? '완료' : '진행중',

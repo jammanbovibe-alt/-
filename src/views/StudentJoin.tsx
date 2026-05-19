@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Loader2, Hash, Sparkles, BookOpen } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { findRoomByCodeHelper } from '../lib/dbHelper';
 import { cn } from '../lib/utils';
 
 export default function StudentJoin() {
@@ -22,10 +21,9 @@ export default function StudentJoin() {
     
     try {
       // Find room code in 'rooms' collection
-      const q = query(collection(db, 'rooms'), where('room_code', '==', inviteCode.toUpperCase()));
-      const snap = await getDocs(q);
+      const room = await findRoomByCodeHelper(inviteCode);
       
-      if (snap.empty) {
+      if (!room) {
         setError('올바른 수업 초대 코드를 입력해 주세요! (예: FJ839A)');
         setIsLoading(false);
       } else {
