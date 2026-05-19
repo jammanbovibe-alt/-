@@ -106,8 +106,12 @@ app.post("/api/quiz/generate", async (req, res) => {
 
     parts.push({ text: `
       Generate ${questionCount} math questions based on the provided material.
+      
+      CRITICAL DIFFICULTY REQUIREMENT:
+      - The generated questions MUST be a balanced mixture of "하" (Easy), "중" (Medium), and "상" (Hard) difficulty levels so that we can evaluate the student's level comprehensively.
+      - Distribute the difficulty levels as evenly as possible across the ${questionCount} questions. E.g., for a 5-question test, include some Easy (하), some Medium (중), and some Hard (상) questions. Do NOT make them all the same level!
+      
       Settings:
-      - Level: ${studentLevel}
       - Use LaTeX for math symbols: ${useMathSymbols}
       - Include real-life problems: ${includeRealLife}
       
@@ -117,7 +121,7 @@ app.post("/api/quiz/generate", async (req, res) => {
       - answer: number (0-3 index)
       - explanation: string
       - misconception_points: string (what to look for if wrong)
-      - difficulty: string (상/중/하)
+      - difficulty: string (must be one of: "상", "중", "하")
       - depth_of_knowledge: string (사고 수준)
     `});
 

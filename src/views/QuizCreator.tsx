@@ -37,7 +37,7 @@ export default function QuizCreator() {
 
   const [settings, setSettings] = useState({
     title: '',
-    studentLevel: '중',
+    studentLevel: '종합',
     questionCount: 5,
     useMathSymbols: true,
     includeRealLife: true,
@@ -86,7 +86,7 @@ export default function QuizCreator() {
       setSettings(prev => ({ 
         ...prev, 
         title: `${data.unit || '수학'} 맞춤형 문항`,
-        studentLevel: data.recommended_level || '중'
+        studentLevel: '종합'
       }));
     } catch (e: any) {
       console.error(e);
@@ -234,22 +234,13 @@ export default function QuizCreator() {
               </div>
 
               <div>
-                <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">학생 수준</label>
-                <div className="flex gap-2 bg-white/3 border border-white/5 p-1 rounded-2xl">
-                  {['하', '중', '상'].map(level => (
-                    <button 
-                      key={level}
-                      onClick={() => setSettings(p => ({ ...p, studentLevel: level }))}
-                      className={cn(
-                        "flex-1 py-3 rounded-xl text-xs font-black transition-all border",
-                        settings.studentLevel === level 
-                          ? "bg-white/10 border-white/10 text-white shadow-md shadow-black/10" 
-                          : "border-transparent text-white/45 hover:text-white"
-                      )}
-                    >
-                      {level}
-                    </button>
-                  ))}
+                <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">출제 난이도 구성</label>
+                <div className="bg-white/3 border border-white/5 p-4.5 rounded-2xl text-[11px] text-white/60 font-semibold leading-relaxed">
+                  <p className="font-extrabold text-white mb-1.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                    하 / 중 / 상 종합 출제
+                  </p>
+                  개개인의 학습 성취도와 오개념 요소를 다각도로 진단하기 위해 전 난이도 문항이 종합적으로 혼합 구성되어 자동 출제됩니다.
                 </div>
               </div>
 
