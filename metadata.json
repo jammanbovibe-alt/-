@@ -1,0 +1,6 @@
+{
+  "name": "AI Math Quiz Maker",
+  "description": "An AI-powered math quiz creation and analysis platform for teachers and students. Teachers can upload materials to generate customized quizzes, and AI provides deep analysis of student performance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

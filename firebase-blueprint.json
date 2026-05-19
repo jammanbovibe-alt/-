@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "Quiz": {
+      "title": "Quiz",
+      "description": "A quiz created by a teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teacher_id": { "type": "string" },
+        "title": { "type": "string" },
+        "source_type": { "type": "string", "enum": ["pdf", "image", "text"] },
+        "student_level": { "type": "string" },
+        "question_count": { "type": "integer" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "answer": { "type": "integer" },
+              "explanation": { "type": "string" },
+              "misconception_points": { "type": "string" },
+              "difficulty": { "type": "string" },
+              "depth_of_knowledge": { "type": "string" }
+            }
+          }
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "invite_code": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published"] }
+      },
+      "required": ["title", "questions", "invite_code", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "A student's quiz submission",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "quiz_id": { "type": "string" },
+        "student_name": { "type": "string" },
+        "student_id": { "type": "string" },
+        "answers": { "type": "array", "items": { "type": "integer" } },
+        "analysis": {
+          "type": "object",
+          "properties": {
+            "score": { "type": "integer" },
+            "total_questions": { "type": "integer" },
+            "accuracy": { "type": "number" },
+            "student_level": { "type": "string" },
+            "incorrect_questions": { "type": "array", "items": { "type": "integer" } },
+            "misconception_types": { "type": "array", "items": { "type": "string" } },
+            "missing_concepts": { "type": "array", "items": { "type": "string" } },
+            "recommended_next_level": { "type": "string" }
+          }
+        },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quiz_id", "student_name", "answers", "analysis"]
+    }
+  },
+  "firestore": {
+    "/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Collection of quizzes"
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Collection of student submissions"
+    }
+  }
+}

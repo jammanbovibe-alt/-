@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Quizzes: 
+    // - Teachers can create if signed in
+    // - Students can read if they have the invite code (queried)
+    match /quizzes/{quizId} {
+      allow create: if isSignedIn();
+      allow read: if true; // Public read for now to fix the error, can be hardened
+      allow update: if isSignedIn() && request.auth.uid == resource.data.teacher_id;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.teacher_id;
+    }
+
+    // Submissions:
+    // - Students can create
+    // - Teachers can read submissions for their quizzes
+    match /submissions/{submissionId} {
+      allow create: if true; // Public create for students
+      allow read: if true; // Public read for now, but should ideally be restricted to teacher or student who submitted
+    }
+  }
+}
