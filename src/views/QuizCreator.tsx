@@ -110,11 +110,22 @@ export default function QuizCreator() {
           ...settings
         })
       });
+      
+      if (!resp.ok) {
+        const errorData = await resp.json();
+        throw new Error(errorData.error || '문항 생성 중 오류가 발생했습니다.');
+      }
+
       const data = await resp.json();
+      if (!Array.isArray(data)) {
+        throw new Error('생성된 문항 형식이 올바르지 않습니다.');
+      }
       setQuestions(data);
       setCurrentStep('review');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e.message || '문항 생성 중 오류가 발생했습니다. 구글 서버 트래픽이 몰려 잠시 거시기할 수 있으니 다시 시도해 주세요!');
+      setCurrentStep('settings');
     } finally {
       setIsGenerating(false);
     }

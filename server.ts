@@ -49,7 +49,7 @@ app.post("/api/quiz/analyze", async (req, res) => {
     `});
 
     const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-2.0-flash",
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -122,7 +122,7 @@ app.post("/api/quiz/generate", async (req, res) => {
     `});
 
     const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-2.0-flash",
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -179,7 +179,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
     `;
 
     const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
