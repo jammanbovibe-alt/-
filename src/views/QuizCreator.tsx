@@ -157,8 +157,9 @@ export default function QuizCreator() {
       });
       setInviteCode(code);
       setCurrentStep('publish');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e.message || '배포에 실패했습니다. Firebase 연결 상태나 권한을 확인해주세요.');
     } finally {
       setIsPublishing(false);
     }
@@ -235,13 +236,37 @@ export default function QuizCreator() {
 
               <div>
                 <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">출제 난이도 구성</label>
-                <div className="bg-white/3 border border-white/5 p-4.5 rounded-2xl text-[11px] text-white/60 font-semibold leading-relaxed">
+                <div className="bg-white/3 border border-white/5 p-4.5 rounded-2xl text-[11px] text-white/60 font-semibold leading-relaxed mb-6">
                   <p className="font-extrabold text-white mb-1.5 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                     하 / 중 / 상 종합 출제
                   </p>
                   개개인의 학습 성취도와 오개념 요소를 다각도로 진단하기 위해 전 난이도 문항이 종합적으로 혼합 구성되어 자동 출제됩니다.
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">난이도별 출제 문항 수</label>
+                <div className="flex gap-2 bg-white/3 border border-white/5 p-1 rounded-2xl">
+                  {[3, 5, 8, 10].map(count => (
+                    <button 
+                      key={count}
+                      type="button"
+                      onClick={() => setSettings(p => ({ ...p, questionCount: count }))}
+                      className={cn(
+                        "flex-1 py-3 rounded-xl text-xs font-black transition-all border",
+                        settings.questionCount === count 
+                          ? "bg-white/10 border-white/10 text-white shadow-md shadow-black/10" 
+                          : "border-transparent text-white/45 hover:text-white"
+                      )}
+                    >
+                      {count}개
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-white/30 mt-2 font-bold tracking-tight text-center">
+                  하/중/상 각각 {settings.questionCount}문항씩 총 {settings.questionCount * 3}문항이 자동 출제됩니다.
+                </p>
               </div>
 
               <div className="space-y-4">

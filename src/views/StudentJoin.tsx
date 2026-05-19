@@ -4,11 +4,13 @@ import { motion } from 'framer-motion';
 import { User, Loader2, Hash, Rocket, Sparkles } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { cn } from '../lib/utils';
 
 export default function StudentJoin() {
   const navigate = useNavigate();
   const [inviteCode, setInviteCode] = useState('');
   const [studentName, setStudentName] = useState('');
+  const [studentLevel, setStudentLevel] = useState<'하' | '중' | '상'>('중');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,6 +30,7 @@ export default function StudentJoin() {
         setIsLoading(false);
       } else {
         localStorage.setItem('studentName', studentName);
+        localStorage.setItem('studentLevel', studentLevel);
         navigate(`/quiz/${inviteCode.toUpperCase()}`);
       }
     } catch (e: any) {
@@ -96,6 +99,30 @@ export default function StudentJoin() {
                   className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-lg font-bold placeholder:text-white/25 placeholder:font-bold focus:border-indigo-500/50 focus:bg-white/10 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-white"
                   required
                 />
+              </div>
+
+              {/* Student Self-reported Level Selection */}
+              <div className="pt-2">
+                <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest mb-3 text-center">나의 현재 수학 성취도 수준</label>
+                <div className="flex gap-2 bg-white/3 border border-white/5 p-1 rounded-2xl">
+                  {(['하', '중', '상'] as const).map(level => (
+                    <button 
+                      key={level}
+                      type="button"
+                      onClick={() => setStudentLevel(level)}
+                      className={cn(
+                        "flex-1 py-4.5 rounded-xl text-xs font-black transition-all border",
+                        studentLevel === level 
+                          ? "bg-white/10 border-white/10 text-white shadow-md shadow-black/10" 
+                          : "border-transparent text-white/45 hover:text-white"
+                      )}
+                    >
+                      {level === '하' && "하 (기초)"}
+                      {level === '중' && "중 (보통)"}
+                      {level === '상' && "상 (심화)"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

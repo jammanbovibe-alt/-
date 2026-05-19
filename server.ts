@@ -144,11 +144,14 @@ app.post("/api/quiz/generate", async (req, res) => {
     }
 
     parts.push({ text: `
-      Generate ${questionCount} math questions based on the provided material.
+      Generate a comprehensive math question set based on the provided material.
       
       CRITICAL DIFFICULTY REQUIREMENT:
-      - The generated questions MUST be a balanced mixture of "하" (Easy), "중" (Medium), and "상" (Hard) difficulty levels so that we can evaluate the student's level comprehensively.
-      - Distribute the difficulty levels as evenly as possible across the ${questionCount} questions. E.g., for a 5-question test, include some Easy (하), some Medium (중), and some Hard (상) questions. Do NOT make them all the same level!
+      - You MUST generate exactly ${questionCount} questions for "하" (Easy) difficulty level.
+      - You MUST generate exactly ${questionCount} questions for "중" (Medium) difficulty level.
+      - You MUST generate exactly ${questionCount} questions for "상" (Hard) difficulty level.
+      - Therefore, the total number of generated questions MUST be exactly ${questionCount * 3} questions!
+      - Label the difficulty of each question accurately as "하", "중", or "상" in the JSON response.
       
       Settings:
       - Use LaTeX for math symbols: ${useMathSymbols}

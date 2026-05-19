@@ -13,6 +13,7 @@ export default function StudentQuiz() {
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [filteredQuestions, setFilteredQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +27,11 @@ export default function StudentQuiz() {
         if (!snap.empty) {
           const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as Quiz;
           setQuiz(data);
-          setAnswers(new Array(data.questions.length).fill(-1));
+          const studentLevel = localStorage.getItem('studentLevel') || '중';
+          const filtered = data.questions.filter(q => q.difficulty === studentLevel);
+          const finalQuestions = filtered.length > 0 ? filtered : data.questions;
+          setFilteredQuestions(finalQuestions);
+          setAnswers(new Array(finalQuestions.length).fill(-1));
         } else {
           navigate('/join');
         }
@@ -58,7 +63,7 @@ export default function StudentQuiz() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          questions: quiz!.questions,
+          questions: filteredQuestions,
           studentAnswers: answers,
           studentName
         })
@@ -99,8 +104,8 @@ export default function StudentQuiz() {
     </div>
   );
 
-  const currentQuestion = quiz.questions[currentIndex];
-  const progress = ((currentIndex + 1) / quiz.questions.length) * 100;
+  const currentQuestion = filteredQuestions[currentIndex];
+  const progress = ((currentIndex + 1) / filteredQuestions.length) * 100;
 
   return (
     <div className="min-h-screen ios-wallpaper flex flex-col font-sans text-white overflow-hidden p-6 gap-6">
@@ -131,7 +136,7 @@ export default function StudentQuiz() {
         <div className="flex items-center gap-2.5 text-white/40 font-extrabold text-sm bg-white/5 border border-white/5 px-4.5 py-2 rounded-2xl">
           <span className="text-indigo-300 font-extrabold">{currentIndex + 1}</span> 
           <span className="text-white/20">/</span> 
-          <span>{quiz.questions.length}</span>
+          <span>{filteredQuestions.length}</span>
         </div>
       </header>
 
@@ -230,7 +235,7 @@ export default function StudentQuiz() {
             </div>
           </div>
 
-          {currentIndex === quiz.questions.length - 1 ? (
+          {currentIndex === filteredQuestions.length - 1 ? (
             <button
               disabled={answers[currentIndex] === -1 || isSubmitting}
               onClick={handleSubmit}

@@ -28,8 +28,13 @@ import StudentQuiz from './views/StudentQuiz';
 import StudentResult from './views/StudentResult';
 
 import TeacherLayout from './components/TeacherLayout';
+import { initAuth } from './lib/firebase';
 
 export default function App() {
+  useEffect(() => {
+    initAuth().catch(console.error);
+  }, []);
+
   return (
     <BrowserRouter>
       <div className="min-h-screen font-sans">
